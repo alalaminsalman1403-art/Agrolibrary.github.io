@@ -919,25 +919,46 @@ function initEventListeners() {
         if (ta) ta.addEventListener('focus', () => { lastFocusedTextarea = ta; });
     });
 
-    // Image upload
-    document.getElementById('edit-image-file').addEventListener('change', e => {
-        const f = e.target.files[0]; if (!f) return;
-        const r = new FileReader();
-        r.onload = ev => {
-            const data = ev.target.result;
-            if (data.length > 1.5 * 1024 * 1024) {
-                const img = new Image(); img.src = data;
-                img.onload = () => {
-                    let w = img.width, h = img.height;
-                    if (w > 800) { h = (800 / w) * h; w = 800; }
-                    const c = document.createElement('canvas'); c.width = w; c.height = h;
-                    c.getContext('2d').drawImage(img, 0, 0, w, h);
-                    setImagePreview(c.toDataURL('image/jpeg', 0.7));
-                };
-            } else setImagePreview(data);
-        };
-        r.readAsDataURL(f);
-    });
+   // Image upload — Cloudinary Unsigned Upload
+document.getElementById('edit-image-file').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Konfigurasi Cloudinary kamu
+    const CLOUD_NAME = 'isi_cloud_name_kamu';     // ← ganti ini
+    const UPLOAD_PRESET = 'isi_preset_name_kamu'; // ← ganti ini
+
+    // Tampilkan loading
+    const label = document.querySelector('label[for="edit-image-file"]');
+    const originalText = label.innerHTML;
+    label.innerHTML = '⏳ Mengunggah...';
+    label.style.pointerEvents = 'none';
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', UPLOAD_PRESET);
+        formData.append('folder', 'agrolibrary'); // folder di Cloudinary
+
+        const res = await fetch(
+            `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+            { method: 'POST', body: formData }
+        );
+
+        if (!res.ok) throw new Error('Upload gagal');
+
+        const data = await res.json();
+        setImagePreview(data.secure_url); // URL permanen dari Cloudinary
+        showToast('Foto berhasil diunggah! ☁️');
+
+    } catch (err) {
+        showToast('Gagal unggah foto: ' + err.message, 'error');
+    } finally {
+        label.innerHTML = originalText;
+        label.style.pointerEvents = '';
+        e.target.value = ''; // reset input
+    }
+});
     document.getElementById('edit-image-url').addEventListener('input', e => {
         const url = e.target.value.trim();
         if (url) setImagePreview(url);
