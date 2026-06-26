@@ -282,6 +282,79 @@ function showViewMode(slug) {
     }
 }
 
+function stripMarkdown(text) {
+    if (!text) return '';
+    return text
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/\*([^*]+)\*/g, '$1')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        .replace(/#[#\s\w]+/g, '')
+        .replace(/>+/g, '')
+        .replace(/[-*+\d.]+\s+/g, '')
+        .trim();
+}
+
+function renderHomeRow(title, subtitle, items) {
+    if (!items || items.length === 0) {
+        const match = title.match(/^([^\w\s]+)\s+(.*)$/);
+        const icon = match ? match[1] : '📄';
+        const text = match ? match[2] : title;
+        return `
+            <div class="home-content-row" style="margin-bottom: 32px;">
+                <div class="home-section-header">
+                    <div class="home-section-title-wrap">
+                        <span class="home-section-icon">${icon}</span>
+                        <h3 class="home-section-title">${text}</h3>
+                    </div>
+                    <span class="home-section-subtitle">${subtitle}</span>
+                </div>
+                <div class="home-row-empty" style="padding:20px;text-align:center;color:var(--text-3);background:var(--bg-1);border:1px dashed var(--border);border-radius:var(--radius-md);">Belum ada konten tersedia</div>
+            </div>
+        `;
+    }
+
+    let cardsHtml = '';
+    items.forEach(p => {
+        const imageHtml = p.image 
+            ? `<div class="row-card-img" style="background-image: url('${p.image}')"></div>`
+            : `<div class="row-card-img row-card-img-placeholder">${getPlantEmoji(p.plant)}</div>`;
+            
+        cardsHtml += `
+            <div class="home-row-card" onclick="window.location.hash='#/page/${p.slug}'">
+                ${imageHtml}
+                <div class="row-card-body">
+                    <div class="row-card-badges" style="display:flex; gap:6px; margin-bottom: 6px;">
+                        <span class="row-card-badge category-umum">${getPlantEmoji(p.plant)} ${p.plant}</span>
+                        <span class="row-card-badge category-${slugify(p.subcategory)}">${getSubcatEmoji(p.subcategory)} ${p.subcategory}</span>
+                    </div>
+                    <h4 class="row-card-title">${p.title}</h4>
+                    <p class="row-card-snippet">${stripMarkdown(p.description || '').substring(0, 60)}...</p>
+                </div>
+            </div>
+        `;
+    });
+
+    const match = title.match(/^([^\w\s]+)\s+(.*)$/);
+    const icon = match ? match[1] : '📄';
+    const text = match ? match[2] : title;
+
+    return `
+        <div class="home-content-row" style="margin-bottom: 32px;">
+            <div class="home-section-header">
+                <div class="home-section-title-wrap">
+                    <span class="home-section-icon">${icon}</span>
+                    <h3 class="home-section-title">${text}</h3>
+                </div>
+                <span class="home-section-subtitle">${subtitle}</span>
+            </div>
+            <div class="home-row-scroll">
+                ${cardsHtml}
+            </div>
+        </div>
+    `;
+}
+
 // ── Cards Grid ──
 function renderCardsGrid() {
     const grid = document.getElementById('cards-grid');
@@ -301,8 +374,10 @@ function renderCardsGrid() {
     });
 
     const container = document.querySelector('.cards-grid-container');
-    const oldBanner = container.querySelector('.home-hero-section');
-    if (oldBanner) oldBanner.remove();
+    
+    // Clean up any old homepage wrappers
+    const oldWrapper = container.querySelector('.home-custom-wrapper');
+    if (oldWrapper) oldWrapper.remove();
 
     // ── Homepage: only show intro, no cards ──
     if (!activePlant && !activeSubcat && !searchQuery) {
@@ -312,37 +387,37 @@ function renderCardsGrid() {
         const subcats   = [...new Set(allItems.map(p => p.subcategory || 'Umum'))].filter(Boolean);
 
         const banner = document.createElement('div');
-        banner.className = 'home-hero-section home-intro-only';
+        banner.className = 'home-custom-wrapper home-hero-section home-intro-only';
         banner.innerHTML = `
-            <div class="home-intro-container">
-                <div class="home-hero-badge">🌾 AgroLibrary</div>
-                <h2 class="home-hero-headline">Ensiklopedia Pertanian<br><span class="home-hero-accent">Cerdas &amp; Lengkap</span></h2>
-                <p class="home-intro-body">
+            <div class="home-intro-container" style="max-width: 800px; margin: 0 auto; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 50vh; padding: 40px 20px;">
+                <div class="home-hero-badge" style="margin-bottom: 18px; width: fit-content; background: var(--green-dim); color: var(--green); border: 1px solid rgba(52, 211, 153, .15); padding: 4px 14px; border-radius: var(--radius-full); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">🌾 AgroLibrary</div>
+                <h2 class="home-hero-headline" style="font-size: 2.5rem; line-height: 1.25; margin-bottom: 18px; font-weight: 800; font-family: var(--font-heading); color: var(--text-1);">Ensiklopedia Pertanian<br><span class="home-hero-accent" style="background: linear-gradient(135deg, var(--green), var(--teal)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Cerdas &amp; Lengkap</span></h2>
+                <p class="home-intro-body" style="font-size: 0.98rem; color: var(--text-2); margin-bottom: 28px; line-height: 1.7; max-width: 640px;">
                     Platform digital untuk mengidentifikasi, mendokumentasikan, dan mengelola
                     informasi penyakit tanaman, hama, teknik budidaya, serta pengelolaan kebun.
                     Temukan solusi pertanian berbasis data dengan pencarian cepat dan sistem kategori terstruktur.
                 </p>
-                <div class="home-hero-stats">
-                    <div class="home-stat-pill">
-                        <span class="home-stat-num">${totalItems}</span>
-                        <span class="home-stat-label">Item Terdaftar</span>
+                <div class="home-hero-stats" style="display: flex; justify-content: center; align-items: center; gap: 28px; margin-bottom: 36px; flex-wrap: wrap;">
+                    <div class="home-stat-pill" style="text-align: center;">
+                        <span class="home-stat-num" style="display: block; font-size: 2rem; font-weight: 800; color: var(--green); line-height: 1.1;">${totalItems}</span>
+                        <span class="home-stat-label" style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Item Terdaftar</span>
                     </div>
-                    <div class="home-stat-divider"></div>
-                    <div class="home-stat-pill">
-                        <span class="home-stat-num">${plants.length}</span>
-                        <span class="home-stat-label">Jenis Tanaman</span>
+                    <div class="home-stat-divider" style="width: 1px; background: var(--border); height: 32px;"></div>
+                    <div class="home-stat-pill" style="text-align: center;">
+                        <span class="home-stat-num" style="display: block; font-size: 2rem; font-weight: 800; color: var(--green); line-height: 1.1;">${plants.length}</span>
+                        <span class="home-stat-label" style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Jenis Tanaman</span>
                     </div>
-                    <div class="home-stat-divider"></div>
-                    <div class="home-stat-pill">
-                        <span class="home-stat-num">${subcats.length}</span>
-                        <span class="home-stat-label">Sub-Kategori</span>
+                    <div class="home-stat-divider" style="width: 1px; background: var(--border); height: 32px;"></div>
+                    <div class="home-stat-pill" style="text-align: center;">
+                        <span class="home-stat-num" style="display: block; font-size: 2rem; font-weight: 800; color: var(--green); line-height: 1.1;">${subcats.length}</span>
+                        <span class="home-stat-label" style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Sub-Kategori</span>
                     </div>
                 </div>
-                <p class="home-intro-cta">🌿 Pilih kategori tanaman di sidebar kiri untuk mulai menjelajahi</p>
+                <p class="home-intro-cta" style="font-size: 0.9rem; color: var(--text-3); font-weight: 500;">🌿 Pilih kategori tanaman di sidebar kiri untuk mulai menjelajahi</p>
             </div>
         `;
         container.insertBefore(banner, grid);
-        return; // No cards on homepage
+        return; // No cards or lists rendered on homepage
     }
 
     if (!filtered.length) {
@@ -374,8 +449,8 @@ function renderCardsGrid() {
 
         card.innerHTML = `
             <div class="info-card-badges">
-                <span class="info-card-badge badge-plant ${plantClass}">${getPlantEmoji(p.plant)} ${p.plant || 'Umum'}</span>
-                <span class="info-card-badge badge-subcat ${subcatClass}">${getSubcatEmoji(p.subcategory)} ${p.subcategory || 'Umum'}</span>
+                <span class="info-card-badge category-umum">${getPlantEmoji(p.plant)} ${p.plant || 'Umum'}</span>
+                <span class="info-card-badge category-${slugify(p.subcategory || 'umum')}">${getSubcatEmoji(p.subcategory)} ${p.subcategory || 'Umum'}</span>
             </div>
             <div class="info-card-image" onclick="window.location.hash='#/page/${p.slug}'">${imageHtml}</div>
             <div class="info-card-body" onclick="window.location.hash='#/page/${p.slug}'">
@@ -1028,6 +1103,7 @@ function initEventListeners() {
             if (inp) inp.value = '';
             if (clr) clr.style.display = 'none';
             renderFilterChips();
+            renderSidebar();
         });
     }
 
