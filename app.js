@@ -80,6 +80,8 @@ let currentImageData = '';
 let lastFocusedTextarea = null;
 let unsubscribeListener = null;
 let isDeveloper = false;
+let currentPage = 1;
+const ITEMS_PER_PAGE = 9;
 
 // ── Init ──
 document.addEventListener('DOMContentLoaded', async () => {
@@ -380,8 +382,11 @@ function renderCardsGrid() {
     const oldWrapper = container.querySelector('.home-custom-wrapper');
     if (oldWrapper) oldWrapper.remove();
 
+    const paginationControls = document.getElementById('pagination-controls');
+
     // ── Homepage: only show intro, no cards ──
     if (!activePlant && !activeSubcat && !searchQuery) {
+        if (paginationControls) paginationControls.style.display = 'none';
         const allItems  = pages.filter(p => p.slug !== 'home');
         const totalItems = allItems.length;
         const plants    = [...new Set(allItems.map(p => p.plant || 'Umum'))].filter(Boolean);
@@ -421,13 +426,20 @@ function renderCardsGrid() {
         return; // No cards or lists rendered on homepage
     }
 
+    const totalItems = filtered.length;
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+    if (currentPage > totalPages) currentPage = Math.max(1, totalPages);
+
     if (!filtered.length) {
         grid.innerHTML = `<div class="sidebar-empty" style="grid-column:1/-1;text-align:center;padding:40px 0;font-size:1rem;">
             Tidak ada item ditemukan untuk filter ini</div>`;
+        if (paginationControls) paginationControls.style.display = 'none';
         return;
     }
 
-    filtered.forEach((p, idx) => {
+    const paginatedItems = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+    paginatedItems.forEach((p, idx) => {
         const card = document.createElement('article');
         card.className = 'info-card info-card-flash';
         card.style.animationDelay = `${idx * 0.05}s`;
@@ -474,6 +486,38 @@ function renderCardsGrid() {
 
         grid.appendChild(card);
     });
+
+    // Render pagination controls
+    if (paginationControls) {
+        if (totalPages > 1) {
+            paginationControls.style.display = 'flex';
+            paginationControls.innerHTML = `
+                <button class="btn btn-outline btn-pagination" id="prev-page-btn" ${currentPage === 1 ? 'disabled' : ''}>
+                    ◀ Sebelumnya
+                </button>
+                <span class="pagination-info">Halaman <b>${currentPage}</b> dari <b>${totalPages}</b></span>
+                <button class="btn btn-outline btn-pagination" id="next-page-btn" ${currentPage === totalPages ? 'disabled' : ''}>
+                    Berikutnya ▶
+                </button>
+            `;
+            paginationControls.querySelector('#prev-page-btn').onclick = () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderCardsGrid();
+                    document.querySelector('.main-content').scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            };
+            paginationControls.querySelector('#next-page-btn').onclick = () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderCardsGrid();
+                    document.querySelector('.main-content').scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            };
+        } else {
+            paginationControls.style.display = 'none';
+        }
+    }
 }
 
 // ── Plant & Subcategory Emojis ──
@@ -706,17 +750,6 @@ function renderSidebar() {
     const itemPages  = pages.filter(p => p.slug !== 'home');
     const allPlants  = [...new Set(itemPages.map(p => p.plant || 'Umum'))];
 
-    // "Semua" badge
-    const allBadge = document.createElement('span');
-    allBadge.className = 'tag-badge' + (!activePlant ? ' active' : '');
-    allBadge.textContent = `Semua (${itemPages.length})`;
-    allBadge.onclick = () => {
-        activePlant = null; activeSubcat = null;
-        renderSidebar(); renderFilterChips();
-        window.location.hash = '#/page/home';
-    };
-    plantTagsDiv.appendChild(allBadge);
-
     PLANT_CATEGORIES.filter(pl => allPlants.includes(pl)).forEach(pl => {
         const count = itemPages.filter(p => (p.plant || 'Umum') === pl).length;
         const b = document.createElement('span');
@@ -725,6 +758,7 @@ function renderSidebar() {
         b.onclick = () => {
             activePlant  = (activePlant === pl) ? null : pl;
             activeSubcat = null;
+            currentPage  = 1;
             renderSidebar(); renderFilterChips();
             if (!activePlant) window.location.hash = '#/page/home';
         };
@@ -741,18 +775,12 @@ function renderSidebar() {
         const plantItems     = itemPages.filter(p => (p.plant || 'Umum') === activePlant);
         const availableSubcats = [...new Set(plantItems.map(p => p.subcategory || 'Umum'))];
 
-        const allSubBadge = document.createElement('span');
-        allSubBadge.className = 'tag-badge' + (!activeSubcat ? ' active' : '');
-        allSubBadge.textContent = `Semua (${plantItems.length})`;
-        allSubBadge.onclick = () => { activeSubcat = null; renderSidebar(); renderFilterChips(); };
-        subcatTagsDiv.appendChild(allSubBadge);
-
         SUB_CATEGORIES.filter(sc => availableSubcats.includes(sc)).forEach(sc => {
             const count = plantItems.filter(p => (p.subcategory || 'Umum') === sc).length;
             const b = document.createElement('span');
             b.className = `tag-badge tag-subcat-${slugify(sc)}` + (activeSubcat === sc ? ' active' : '');
             b.textContent = `${getSubcatEmoji(sc)} ${sc} (${count})`;
-            b.onclick = () => { activeSubcat = (activeSubcat === sc) ? null : sc; renderSidebar(); renderFilterChips(); };
+            b.onclick = () => { activeSubcat = (activeSubcat === sc) ? null : sc; currentPage = 1; renderSidebar(); renderFilterChips(); };
             subcatTagsDiv.appendChild(b);
         });
     } else if (subcatSection) {
@@ -838,19 +866,19 @@ function renderFilterChips() {
 
     if (activePlant) {
         bar.appendChild(mkChip(`${getPlantEmoji(activePlant)} ${activePlant}`, () => {
-            activePlant = null; activeSubcat = null;
+            activePlant = null; activeSubcat = null; currentPage = 1;
             renderSidebar(); renderFilterChips();
             window.location.hash = '#/page/home';
         }));
     }
     if (activeSubcat) {
         bar.appendChild(mkChip(`${getSubcatEmoji(activeSubcat)} ${activeSubcat}`, () => {
-            activeSubcat = null; renderSidebar(); renderFilterChips();
+            activeSubcat = null; currentPage = 1; renderSidebar(); renderFilterChips();
         }, ' filter-chip-sub'));
     }
     if (searchQuery) {
         bar.appendChild(mkChip(`🔍 "${searchQuery}"`, () => {
-            searchQuery = '';
+            searchQuery = ''; currentPage = 1;
             const inp = document.getElementById('search-input');
             const clr = document.getElementById('clear-search-btn');
             if (inp) inp.value = '';
@@ -863,7 +891,7 @@ function renderFilterChips() {
     clearAll.className = 'btn btn-xs filter-clear-all';
     clearAll.textContent = '✕ Hapus Semua';
     clearAll.onclick = () => {
-        activePlant = null; activeSubcat = null; searchQuery = '';
+        activePlant = null; activeSubcat = null; searchQuery = ''; currentPage = 1;
         const inp = document.getElementById('search-input');
         const clr = document.getElementById('clear-search-btn');
         if (inp) inp.value = '';
@@ -1109,7 +1137,7 @@ function initEventListeners() {
     const homeLink = document.getElementById('sidebar-home-link');
     if (homeLink) {
         homeLink.addEventListener('click', () => {
-            activePlant = null; activeSubcat = null; activeTag = null; searchQuery = '';
+            activePlant = null; activeSubcat = null; activeTag = null; searchQuery = ''; currentPage = 1;
             const inp = document.getElementById('search-input');
             const clr = document.getElementById('clear-search-btn');
             if (inp) inp.value = '';
@@ -1123,12 +1151,12 @@ function initEventListeners() {
     const searchInput = document.getElementById('search-input');
     const clearBtn    = document.getElementById('clear-search-btn');
     searchInput.addEventListener('input', e => {
-        searchQuery = e.target.value.trim();
+        searchQuery = e.target.value.trim(); currentPage = 1;
         clearBtn.style.display = searchQuery ? 'flex' : 'none';
         renderSidebar(); renderFilterChips();
     });
     clearBtn.addEventListener('click', () => {
-        searchInput.value = ''; searchQuery = ''; clearBtn.style.display = 'none';
+        searchInput.value = ''; searchQuery = ''; currentPage = 1; clearBtn.style.display = 'none';
         searchInput.focus(); renderSidebar(); renderFilterChips();
     });
 
