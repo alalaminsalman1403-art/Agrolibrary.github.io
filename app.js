@@ -216,6 +216,7 @@ function migratePages() {
         if (!p.category) p.category = p.subcategory;
         if (!p.symptoms) p.symptoms = '';
         if (!p.treatment) p.treatment = '';
+        if (!p.impact) p.impact = '';
         if (!p.image) p.image = '';
         if (typeof p.viewCount !== 'number') p.viewCount = 0;
         if (typeof p.likesCount !== 'number') p.likesCount = 0;
@@ -428,22 +429,15 @@ function renderCardsGrid() {
 
     filtered.forEach((p, idx) => {
         const card = document.createElement('article');
-        card.className = 'info-card';
+        card.className = 'info-card info-card-flash';
         card.style.animationDelay = `${idx * 0.05}s`;
-
-        const plantClass  = `plant-${slugify(p.plant || 'umum')}`;
-        const subcatClass = `subcat-${slugify(p.subcategory || 'umum')}`;
 
         const imageHtml = p.image
             ? `<img src="${p.image}" alt="${p.title}" loading="lazy">`
             : `<div class="info-card-placeholder">${getPlantEmoji(p.plant)}</div>`;
 
-        const descSnippet     = p.description ? parseMarkdown(p.description) : '';
-        const symptomsSnippet = p.symptoms    ? parseMarkdown(p.symptoms)    : '';
-        const treatmentSnippet= p.treatment   ? parseMarkdown(p.treatment)   : '';
-
         const devButtons = isDeveloper ? `
-            <button class="btn btn-outline btn-card-edit" onclick="window.location.hash='#/edit/${p.slug}'">✏️ Edit</button>
+            <button class="btn btn-outline btn-card-edit" onclick="event.stopPropagation();window.location.hash='#/edit/${p.slug}'">✏️ Edit</button>
             <button class="btn btn-danger btn-card-delete" data-slug="${p.slug}">🗑️</button>
         ` : '';
 
@@ -452,29 +446,19 @@ function renderCardsGrid() {
                 <span class="info-card-badge category-umum">${getPlantEmoji(p.plant)} ${p.plant || 'Umum'}</span>
                 <span class="info-card-badge category-${slugify(p.subcategory || 'umum')}">${getSubcatEmoji(p.subcategory)} ${p.subcategory || 'Umum'}</span>
             </div>
-            <div class="info-card-image" onclick="window.location.hash='#/page/${p.slug}'">${imageHtml}</div>
-            <div class="info-card-body" onclick="window.location.hash='#/page/${p.slug}'">
+            <div class="info-card-image">${imageHtml}</div>
+            <div class="info-card-body">
                 <h3 class="info-card-title">${p.title}</h3>
-                <div class="card-info-section card-info-desc">
-                    <span class="card-info-section-title">📝 Penyebab / Deskripsi</span>
-                    <div class="card-info-section-body">${descSnippet}</div>
-                </div>
-                ${p.symptoms && p.symptoms.trim() ? `
-                <div class="card-info-section card-info-symptoms">
-                    <span class="card-info-section-title">⚠️ Ciri / Gejala</span>
-                    <div class="card-info-section-body">${symptomsSnippet}</div>
-                </div>` : ''}
-                ${p.treatment && p.treatment.trim() ? `
-                <div class="card-info-section card-info-treatment">
-                    <span class="card-info-section-title">✅ Penanggulangan</span>
-                    <div class="card-info-section-body">${treatmentSnippet}</div>
-                </div>` : ''}
+                <p class="info-card-hint">👆 Ketuk untuk lihat detail</p>
             </div>
-            <div class="info-card-footer">
-                <button class="btn btn-outline btn-card-view" onclick="window.location.hash='#/page/${p.slug}'">👁️ Lihat</button>
-                ${devButtons}
-            </div>
+            ${isDeveloper ? `<div class="info-card-footer">${devButtons}</div>` : ''}
         `;
+
+        // Click anywhere on card (except dev buttons) → open popup
+        card.addEventListener('click', e => {
+            if (e.target.closest('.btn-card-edit') || e.target.closest('.btn-card-delete')) return;
+            window.location.hash = `#/page/${p.slug}`;
+        });
 
         if (isDeveloper) {
             const delBtn = card.querySelector('.btn-card-delete');
@@ -527,24 +511,40 @@ function showInfoPopup(page) {
         bodyEl.appendChild(hero);
     }
 
-    const descSection = document.createElement('div');
-    descSection.className = 'article-section section-description';
-    descSection.innerHTML = `
-        <h3 class="article-section-title"><span class="section-icon">📝</span> Penyebab / Deskripsi</h3>
-        <div class="markdown-body">${parseMarkdown(page.description || '')}</div>
-    `;
-    bodyEl.appendChild(descSection);
+    // ── Penyebab / Deskripsi ──
+    if (page.description && page.description.trim()) {
+        const descSection = document.createElement('div');
+        descSection.className = 'article-section section-description';
+        descSection.innerHTML = `
+            <h3 class="article-section-title"><span class="section-icon">📝</span> Penyebab</h3>
+            <div class="markdown-body">${parseMarkdown(page.description)}</div>
+        `;
+        bodyEl.appendChild(descSection);
+    }
 
+    // ── Ciri / Gejala Utama ──
     if (page.symptoms && page.symptoms.trim()) {
         const s = document.createElement('div');
         s.className = 'article-section section-symptoms';
         s.innerHTML = `
-            <h3 class="article-section-title"><span class="section-icon">⚠️</span> Ciri-Ciri / Gejala</h3>
+            <h3 class="article-section-title"><span class="section-icon">⚠️</span> Ciri / Gejala Utama</h3>
             <div class="markdown-body">${parseMarkdown(page.symptoms)}</div>
         `;
         bodyEl.appendChild(s);
     }
 
+    // ── Dampak ──
+    if (page.impact && page.impact.trim()) {
+        const imp = document.createElement('div');
+        imp.className = 'article-section section-impact';
+        imp.innerHTML = `
+            <h3 class="article-section-title"><span class="section-icon">💥</span> Dampak</h3>
+            <div class="markdown-body">${parseMarkdown(page.impact)}</div>
+        `;
+        bodyEl.appendChild(imp);
+    }
+
+    // ── Cara Penanggulangan ──
     if (page.treatment && page.treatment.trim()) {
         const t = document.createElement('div');
         t.className = 'article-section section-treatment';
@@ -616,6 +616,7 @@ function showEditMode(slug = null, prefill = '') {
         page.image ? setImagePreview(page.image) : clearImagePreview();
         el('edit-description').value = page.description || page.content || '';
         el('edit-symptoms').value    = page.symptoms || '';
+        el('edit-impact').value      = page.impact || '';
         el('edit-treatment').value   = page.treatment || '';
         el('edit-breadcrumbs').innerHTML = `AgroLibrary &gt; Edit &gt; <span>${page.title}</span>`;
     } else {
@@ -627,6 +628,7 @@ function showEditMode(slug = null, prefill = '') {
         clearImagePreview();
         el('edit-description').value = '';
         el('edit-symptoms').value    = '';
+        el('edit-impact').value      = '';
         el('edit-treatment').value   = '';
         el('edit-breadcrumbs').innerHTML = `AgroLibrary &gt; <span>Tambah Item Baru</span>`;
     }
@@ -640,6 +642,7 @@ async function saveActivePage() {
     const subcategory= el('edit-subcategory').value || 'Umum';
     const description= el('edit-description').value;
     const symptoms   = el('edit-symptoms').value;
+    const impact     = el('edit-impact') ? el('edit-impact').value : '';
     const treatment  = el('edit-treatment').value;
 
     if (!title) { el('title-error').textContent = 'Nama item tidak boleh kosong!'; el('edit-title').focus(); return; }
@@ -658,6 +661,7 @@ async function saveActivePage() {
         activePage.description = description;
         activePage.content     = description;
         activePage.symptoms    = symptoms;
+        activePage.impact      = impact;
         activePage.treatment   = treatment;
         activePage.updatedAt   = new Date().toISOString();
         showToast('Data berhasil disimpan! 💾');
@@ -666,7 +670,7 @@ async function saveActivePage() {
             slug: newSlug, title,
             plant, subcategory, category: subcategory,
             image: currentImageData, description, content: description,
-            symptoms, treatment, updatedAt: new Date().toISOString(),
+            symptoms, impact, treatment, updatedAt: new Date().toISOString(),
             viewCount: 0, likesCount: 0
         });
         showToast('Item baru berhasil dibuat! 🎉');
@@ -1070,7 +1074,8 @@ function initEventListeners() {
     // Sidebar toggle (mobile + desktop hamburger)
     const toggleBtn = document.getElementById('mobile-sidebar-toggle-btn');
     if (toggleBtn) {
-        toggleBtn.addEventListener('click', () => {
+        toggleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             const sidebar   = document.getElementById('app-sidebar');
             const container = document.querySelector('.app-container');
             const isCollapsed = container.classList.contains('sidebar-collapsed');
@@ -1087,9 +1092,13 @@ function initEventListeners() {
     // Sidebar close button (✕ inside sidebar)
     const closeBtn = document.getElementById('sidebar-close-btn');
     if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            document.getElementById('app-sidebar').classList.remove('open');
-            document.querySelector('.app-container').classList.add('sidebar-collapsed');
+        closeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const sidebar   = document.getElementById('app-sidebar');
+            const container = document.querySelector('.app-container');
+            sidebar.classList.remove('open');
+            container.classList.add('sidebar-collapsed');
         });
     }
 
@@ -1175,7 +1184,7 @@ function initEventListeners() {
     });
     document.getElementById('save-page-btn').addEventListener('click', saveActivePage);
 
-    ['edit-description','edit-symptoms','edit-treatment'].forEach(id => {
+    ['edit-description','edit-symptoms','edit-impact','edit-treatment'].forEach(id => {
         const ta = document.getElementById(id);
         if (ta) ta.addEventListener('focus', () => { lastFocusedTextarea = ta; });
     });

@@ -200,6 +200,38 @@ a:hover {
     color: var(--text-1);
 }
 
+.sidebar-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sidebar-close-btn {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: var(--text-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--t-fast);
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+.sidebar-close-btn:hover {
+    background: var(--bg-3);
+    border-color: var(--border-hover);
+    color: var(--text-1);
+    transform: rotate(90deg);
+}
+
 .theme-toggle {
     background: var(--bg-2);
     border: 1px solid var(--border);
@@ -896,6 +928,10 @@ a:hover {
     border-left: 4px solid var(--amber);
 }
 
+.section-impact {
+    border-left: 4px solid var(--red);
+}
+
 .section-treatment {
     border-left: 4px solid var(--teal);
 }
@@ -1496,8 +1532,8 @@ a:hover {
 
 .cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
     margin-bottom: 40px;
 }
 
@@ -1551,7 +1587,7 @@ a:hover {
 /* Card image and fallback leaf background */
 .info-card-image {
     width: 100%;
-    height: 160px;
+    aspect-ratio: 4 / 3;
     overflow: hidden;
     background: var(--bg-2);
     position: relative;
@@ -1560,6 +1596,7 @@ a:hover {
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    flex-shrink: 0;
 }
 
 .info-card-image img {
@@ -1586,24 +1623,50 @@ a:hover {
 
 /* Card body containing title and sections */
 .info-card-body {
-    padding: 20px;
+    padding: 16px 20px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 6px;
     flex: 1;
     cursor: pointer;
 }
 
 .info-card-title {
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--text-1);
     margin-bottom: 2px;
     transition: color var(--t-fast);
+    line-height: 1.35;
 }
 
 .info-card:hover .info-card-title {
     color: var(--green);
+}
+
+/* Flash card hint text */
+.info-card-hint {
+    font-size: 0.72rem;
+    color: var(--text-3);
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+    transition: color var(--t-fast);
+}
+
+.info-card:hover .info-card-hint {
+    color: var(--green);
+}
+
+/* Flash card mode - compact, clean style */
+.info-card-flash {
+    cursor: pointer;
+}
+
+.info-card-flash .info-card-body {
+    padding: 14px 18px;
 }
 
 /* Mini-sections for Description, Symptoms, and Treatment */
