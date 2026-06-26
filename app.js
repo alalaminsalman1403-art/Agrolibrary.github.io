@@ -1031,13 +1031,16 @@ function updateDevUI() {
     const headerActionsDiv = document.getElementById('header-actions-dev');
     const popupEditBtn     = document.getElementById('popup-edit-btn');
     const popupDeleteBtn   = document.getElementById('popup-delete-btn');
+    const devFooterTop     = document.querySelector('.sidebar-footer-top');
 
     if (isDeveloper) {
         if (devLoginBtn)      { devLoginBtn.textContent = '🔒 Keluar Dev Mode'; devLoginBtn.classList.add('btn-dev-active'); }
         if (headerActionsDiv) headerActionsDiv.style.display = 'flex';
+        if (devFooterTop)     devFooterTop.style.display     = 'flex';
     } else {
         if (devLoginBtn)      { devLoginBtn.textContent = '🔐 Developer Login'; devLoginBtn.classList.remove('btn-dev-active'); }
         if (headerActionsDiv) headerActionsDiv.style.display = 'none';
+        if (devFooterTop)     devFooterTop.style.display     = 'none';
     }
     if (popupEditBtn)   popupEditBtn.style.display   = isDeveloper ? '' : 'none';
     if (popupDeleteBtn) popupDeleteBtn.style.display = isDeveloper ? '' : 'none';
