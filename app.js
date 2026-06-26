@@ -1,11 +1,10 @@
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 //  AgroLibrary — Main Application Logic
-//  Versi: Firebase Firestore + Cloudinary
-// ═══════════════════════════════════════════
+//  Versi: Firebase + Cloudinary + Plant/Subcat + Dev Auth
+// ═══════════════════════════════════════════════════
 
-//  Firebase Config
-// Ambil dari: Firebase Console → Project Settings → Your Apps → SDK setup
-const FirebaseConfig = {
+// ── Firebase Config ──
+const firebaseConfig = {
   apiKey: "AIzaSyDiNaDyY6ekYp97g_pGlnwdmPLXQHRfe0k",
   authDomain: "agrolibrary-d35e6.firebaseapp.com",
   projectId: "agrolibrary-d35e6",
@@ -15,129 +14,77 @@ const FirebaseConfig = {
   measurementId: "G-9F129CE5MR"
 };
 
-//  Cloudinary Config
-// Cloud Name sudah diketahui dari screenshot kamu
+// ── Cloudinary Config ──
 const CLOUDINARY_CLOUD_NAME    = 'dbirucziq';
-const CLOUDINARY_UPLOAD_PRESET = 'AgroLibrary'; // dari Settings → Upload → Upload Presets
+const CLOUDINARY_UPLOAD_PRESET = 'AgroLibrary';
 
-// ╔══════════════════════════════════════════════╗
-// ║  Selesai — tidak perlu ubah di bawah ini     ║
-// ╚══════════════════════════════════════════════╝
+// ── App Constants ──
+const PLANT_CATEGORIES = ['Sawit','Kopi','Padi','Jagung','Kelapa','Karet','Kakao','Teh','Tebu','Umum'];
+const SUB_CATEGORIES   = ['Penyakit','Hama','Pupuk','Budidaya','Pascapanen','Umum'];
+const DEV_PASSWORD     = 'agro2024';
 
-// ── FIREBASE INIT ──
-firebase.initializeApp(FirebaseConfig);
+const STORAGE_KEYS = { THEME: 'AGROLIBRARY_THEME' };
+
+// ── Firebase Init ──
+firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const PAGES_DOC = db.collection('agrolibrary').doc('pages');
 
-const STORAGE_KEYS = {
-    THEME: 'AGROLIBRARY_THEME'
-};
-
-// ── DEFAULT DATA ──
+// ── Default Data ──
 const DEFAULT_PAGES = [
     {
-        slug: 'home',
-        title: 'Beranda',
-        category: 'Umum',
+        slug: 'home', title: 'Beranda',
+        plant: 'Umum', subcategory: 'Umum', category: 'Umum',
         image: '',
-        description: `Selamat datang di **AgroLibrary** 🌾, pustaka digital pertanian modern Anda!
-
-### 💡 Cara Menggunakan
-
-1. **Jelajahi Sidebar** — Semua data dikelompokkan berdasarkan kategori (Penyakit, Hama, Tanaman, dll.)
-2. **Pencarian Instan** — Ketik nama penyakit, gejala, atau penyebab di kotak pencarian
-3. **Tambah Data Baru** — Klik tombol **"Tambah Item Baru"**, isi form terstruktur, lalu simpan
-4. **Unggah Foto** — Setiap item mendukung unggah foto dari perangkat atau URL gambar
-5. **Sinkron Otomatis** — Data tersimpan di cloud, bisa diakses dari perangkat mana saja!
-
-> Data tersimpan di Firebase Cloud — tersinkron otomatis di semua perangkat secara real-time!
-
-*Mulailah dengan menjelajahi contoh data di sidebar kiri.*`,
-        symptoms: '',
-        treatment: '',
-        updatedAt: new Date().toISOString(),
-        viewCount: 0,
-        likesCount: 0
+        description: `Selamat datang di **AgroLibrary** 🌾, pustaka digital pertanian modern Anda!\n\n### 💡 Cara Menggunakan\n\n1. **Pilih Tanaman** — Klik kategori tanaman di sidebar (Sawit, Kopi, Padi, dll.)\n2. **Pilih Sub-Kategori** — Filter berdasarkan Penyakit, Hama, Pupuk, dll.\n3. **Pencarian Instan** — Ketik nama item di kotak pencarian\n4. **Tambah Data** — Login sebagai Developer lalu klik "Tambah Item"\n\n> Data tersimpan di Firebase Cloud — tersinkron otomatis di semua perangkat!`,
+        symptoms: '', treatment: '',
+        updatedAt: new Date().toISOString(), viewCount: 0, likesCount: 0
     },
     {
-        slug: 'layu-bakteri',
-        title: 'Layu Bakteri',
-        category: 'Penyakit',
+        slug: 'layu-bakteri', title: 'Layu Bakteri',
+        plant: 'Padi', subcategory: 'Penyakit', category: 'Penyakit',
         image: '',
-        description: `**Layu Bakteri** disebabkan oleh bakteri *Ralstonia solanacearum*, salah satu penyakit paling merusak pada tanaman hortikultura di wilayah tropis.
-
-Bakteri ini hidup di dalam tanah dan menyerang sistem perakaran, menyumbat pembuluh xilem (pengangkut air) sehingga pasokan air ke daun dan batang terhambat.
-
-Penyebarannya sangat cepat melalui air irigasi, alat pertanian, atau tanah yang terbawa alas kaki.`,
-        symptoms: `- **Layu mendadak** — daun muda layu tiba-tiba saat cuaca panas, kadang pulih di pagi hari
-- **Daun tetap hijau** saat layu (berbeda dengan Fusarium yang menguning dulu)
-- **Batang berwarna cokelat** jika dipotong melintang di bagian bawah
-- **Lendir bakteri (ooze)** — celupkan potongan batang ke air bersih, akan keluar lendir putih susu`,
-        treatment: `1. **Cabut & musnahkan** tanaman terinfeksi segera (bakar/kubur jauh dari lahan)
-2. **Gunakan varietas tahan** — pilih benih yang resisten terhadap layu bakteri
-3. **Aplikasi agens hayati** — *Pseudomonas fluorescens* atau *Trichoderma harzianum*
-4. **Rotasi tanaman** — ganti dengan tanaman non-inang selama 2-3 tahun
-5. **Solarisasi tanah** — tutup bedengan dengan mulsa plastik sebelum tanam`,
-        updatedAt: new Date().toISOString(),
-        viewCount: 0,
-        likesCount: 0
+        description: `**Layu Bakteri** disebabkan oleh bakteri *Ralstonia solanacearum*, salah satu penyakit paling merusak pada tanaman hortikultura di wilayah tropis.\n\nBakteri ini hidup di dalam tanah dan menyerang sistem perakaran, menyumbat pembuluh xilem sehingga pasokan air terhambat.\n\nPenyebarannya sangat cepat melalui air irigasi, alat pertanian, atau tanah.`,
+        symptoms: `- **Layu mendadak** — daun muda layu tiba-tiba saat cuaca panas, kadang pulih di pagi hari\n- **Daun tetap hijau** saat layu (berbeda dengan Fusarium yang menguning dulu)\n- **Batang berwarna cokelat** jika dipotong melintang di bagian bawah\n- **Lendir bakteri (ooze)** — celupkan potongan batang ke air bersih, akan keluar lendir putih susu`,
+        treatment: `1. **Cabut & musnahkan** tanaman terinfeksi segera (bakar/kubur jauh dari lahan)\n2. **Gunakan varietas tahan** — pilih benih yang resisten terhadap layu bakteri\n3. **Aplikasi agens hayati** — *Pseudomonas fluorescens* atau *Trichoderma harzianum*\n4. **Rotasi tanaman** — ganti dengan tanaman non-inang selama 2-3 tahun\n5. **Solarisasi tanah** — tutup bedengan dengan mulsa plastik sebelum tanam`,
+        updatedAt: new Date().toISOString(), viewCount: 0, likesCount: 0
     },
     {
-        slug: 'wereng-coklat',
-        title: 'Wereng Batang Coklat',
-        category: 'Hama',
+        slug: 'wereng-coklat', title: 'Wereng Batang Coklat',
+        plant: 'Padi', subcategory: 'Hama', category: 'Hama',
         image: '',
-        description: `**Wereng Batang Coklat** (WBC / *Nilaparvata lugens*) adalah hama paling berbahaya bagi pertanaman padi di Asia.
-
-Serangga kecil penghisap cairan ini menyerang secara koloni dalam jumlah ribuan. Selain kerusakan langsung, WBC juga merupakan vektor penular virus **Kerdil Rumput** dan **Kerdil Hampa** yang menyebabkan gagal panen total (puso).`,
-        symptoms: `- **Serangga kecil** (2-4 mm) berwarna cokelat kemerahan, menetap di pangkal batang dekat air
-- **Hopperburn** — daun menguning lalu mengering berwarna cokelat jerami secara melingkar
-- **Embun jelaga** — jelaga hitam di bawah daun akibat jamur pada honeydew wereng`,
-        treatment: `1. **Jajar legowo** (2:1 atau 4:1) untuk sirkulasi udara yang baik
-2. **Tanam serempak** dalam satu wilayah dan rotasi varietas tahan wereng (Inpari 30/33)
-3. **Lestarikan musuh alami** — laba-laba, kumbang koksinel, kepik *Cyrtorhinus*
-4. **Pengairan berselang** — keringkan lahan berkala, hindari genangan terus-menerus
-5. **Insektisida selektif** jika populasi > 15 ekor/rumpun (gunakan *pymetrozine* atau *imidacloprid*)`,
-        updatedAt: new Date().toISOString(),
-        viewCount: 0,
-        likesCount: 0
+        description: `**Wereng Batang Coklat** (WBC / *Nilaparvata lugens*) adalah hama paling berbahaya bagi pertanaman padi di Asia.\n\nSerangga kecil penghisap cairan ini menyerang secara koloni dalam jumlah ribuan. Selain kerusakan langsung, WBC juga vektor penular virus **Kerdil Rumput** dan **Kerdil Hampa**.`,
+        symptoms: `- **Serangga kecil** (2-4 mm) berwarna cokelat kemerahan, menetap di pangkal batang\n- **Hopperburn** — daun menguning lalu mengering berwarna cokelat jerami\n- **Embun jelaga** — jelaga hitam di bawah daun akibat jamur pada honeydew wereng`,
+        treatment: `1. **Jajar legowo** (2:1 atau 4:1) untuk sirkulasi udara yang baik\n2. **Tanam serempak** dalam satu wilayah dan rotasi varietas tahan wereng\n3. **Lestarikan musuh alami** — laba-laba, kumbang koksinel, kepik *Cyrtorhinus*\n4. **Pengairan berselang** — keringkan lahan berkala, hindari genangan terus-menerus\n5. **Insektisida selektif** jika populasi > 15 ekor/rumpun`,
+        updatedAt: new Date().toISOString(), viewCount: 0, likesCount: 0
     },
     {
-        slug: 'tanaman-padi',
-        title: 'Padi (Oryza sativa)',
-        category: 'Tanaman',
+        slug: 'budidaya-padi', title: 'Budidaya Padi (Oryza sativa)',
+        plant: 'Padi', subcategory: 'Budidaya', category: 'Budidaya',
         image: '',
-        description: `**Padi** (*Oryza sativa*) adalah komoditas terpenting Indonesia, menghasilkan beras sebagai makanan pokok mayoritas penduduk.
-
-Termasuk tanaman monokotil dari keluarga *Poaceae*. Memerlukan air melimpah (padi sawah) atau hujan teratur (padi gogo). Tumbuh optimal di iklim tropis basah dengan penyinaran penuh.`,
-        symptoms: `Karakteristik tanaman padi sehat:
-- **Akar serabut** — lebat, berwarna putih bersih
-- **Batang** — bulat berongga, beruas-ruas, diselimuti pelepah daun
-- **Daun** — pita memanjang, urat sejajar, bulu halus di permukaan
-- **Malai** — tangkai bulir menggantung, sekam kuning keemasan saat matang`,
-        treatment: `1. **Persemaian** — benih daya tumbuh > 90%, rendam 24 jam, peram 24 jam, semai 15-21 hari
-2. **Olah tanah** — bajak 2x, genangi hingga melumpur sempurna
-3. **Pupuk berimbang** — organik + makro (Urea, SP-36, KCl) dalam 3 tahap
-4. **Manajemen air** — irigasi berselang, genangi 3-5 cm awal tanam, keringkan lahan 10 hari sebelum panen
-5. **Penyiangan** — manual/gosrok pada 20 HST dan 40 HST`,
-        updatedAt: new Date().toISOString(),
-        viewCount: 0,
-        likesCount: 0
+        description: `**Padi** (*Oryza sativa*) adalah komoditas terpenting Indonesia. Termasuk tanaman monokotil dari keluarga *Poaceae*. Memerlukan air melimpah dan penyinaran penuh.`,
+        symptoms: `Karakteristik tanaman padi sehat:\n- **Akar serabut** — lebat, berwarna putih bersih\n- **Batang** — bulat berongga, beruas-ruas\n- **Daun** — pita memanjang, urat sejajar\n- **Malai** — tangkai bulir menggantung, sekam kuning keemasan saat matang`,
+        treatment: `1. **Persemaian** — benih daya tumbuh >90%, rendam 24 jam, peram 24 jam\n2. **Olah tanah** — bajak 2x, genangi hingga melumpur sempurna\n3. **Pupuk berimbang** — organik + Urea, SP-36, KCl dalam 3 tahap\n4. **Manajemen air** — irigasi berselang, genangi 3-5 cm awal tanam\n5. **Penyiangan** — manual/gosrok pada 20 HST dan 40 HST`,
+        updatedAt: new Date().toISOString(), viewCount: 0, likesCount: 0
     }
 ];
 
-// ── STATE ──
+// ── State ──
 let pages = [];
 let activePage = null;
+let activePlant = null;
+let activeSubcat = null;
 let activeTag = null;
 let searchQuery = '';
 let currentImageData = '';
 let lastFocusedTextarea = null;
 let unsubscribeListener = null;
+let isDeveloper = false;
 
-// ── INIT ──
+// ── Init ──
 document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
+    checkDevMode();
     showAppLoading(true);
     await loadPages();
     setupRealtimeSync();
@@ -145,9 +92,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.addEventListener('hashchange', handleRoute);
     handleRoute();
     showAppLoading(false);
+    updateDevUI();
 });
 
-// ── LOADING STATE ──
+// ── Loading State ──
 function showAppLoading(show) {
     let overlay = document.getElementById('app-loading-overlay');
     if (show) {
@@ -158,7 +106,7 @@ function showAppLoading(show) {
                 position:fixed;top:0;left:0;width:100%;height:100%;
                 background:var(--bg-primary,#111);
                 display:flex;flex-direction:column;align-items:center;
-                justify-content:center;z-index:9999;gap:16px;
+                justify-content:center;z-index:99999;gap:16px;
             `;
             overlay.innerHTML = `
                 <div style="font-size:2.5rem">🌾</div>
@@ -176,7 +124,7 @@ function showAppLoading(show) {
     }
 }
 
-// ── THEME ──
+// ── Theme ──
 function initTheme() {
     const t = localStorage.getItem(STORAGE_KEYS.THEME) || 'dark';
     document.body.className = t === 'light' ? 'light-theme' : 'dark-theme';
@@ -199,13 +147,12 @@ async function loadPages() {
             pages = doc.data().data;
             migratePages();
         } else {
-            // Cek apakah ada data lama di localStorage untuk migrasi
             const raw = localStorage.getItem('AGROLIBRARY_PAGES') || localStorage.getItem('WIKIMAJOR_PAGES');
             if (raw) {
                 try {
                     pages = JSON.parse(raw);
                     migratePages();
-                    await savePages(); // Upload data lama ke Firestore
+                    await savePages();
                     showToast('Data lama berhasil dipindahkan ke cloud! ☁️');
                 } catch {
                     pages = [...DEFAULT_PAGES];
@@ -218,7 +165,6 @@ async function loadPages() {
         }
     } catch (err) {
         console.error('Gagal memuat dari Firebase:', err);
-        // Fallback ke localStorage jika Firebase gagal
         const raw = localStorage.getItem('AGROLIBRARY_PAGES');
         if (raw) {
             try { pages = JSON.parse(raw); migratePages(); } catch { pages = [...DEFAULT_PAGES]; }
@@ -234,21 +180,17 @@ async function savePages() {
         await PAGES_DOC.set({ data: pages, updatedAt: new Date().toISOString() });
     } catch (err) {
         console.error('Gagal menyimpan ke Firebase:', err);
-        // Fallback ke localStorage
         localStorage.setItem('AGROLIBRARY_PAGES', JSON.stringify(pages));
         showToast('⚠️ Tersimpan offline saja (cek koneksi)', 'error');
     }
 }
 
-// ── REAL-TIME SYNC ──
-// Mendengarkan perubahan dari device lain secara otomatis
+// ── Real-Time Sync ──
 function setupRealtimeSync() {
-    if (unsubscribeListener) unsubscribeListener(); // Hapus listener lama
-
+    if (unsubscribeListener) unsubscribeListener();
     unsubscribeListener = PAGES_DOC.onSnapshot(snapshot => {
         if (snapshot.exists && snapshot.data().data) {
             const newPages = snapshot.data().data;
-            // Hanya update jika data benar-benar berbeda
             if (JSON.stringify(newPages) !== JSON.stringify(pages)) {
                 pages = newPages;
                 migratePages();
@@ -256,15 +198,22 @@ function setupRealtimeSync() {
                 showToast('🔄 Data diperbarui dari perangkat lain', 'info');
             }
         }
-    }, err => {
-        console.error('Listener error:', err);
-    });
+    }, err => { console.error('Listener error:', err); });
 }
 
 function migratePages() {
     pages.forEach(p => {
         if (!p.description) p.description = p.content || '';
-        if (!p.category) p.category = (p.tags && p.tags[0]) ? capitalize(p.tags[0]) : 'Umum';
+        // Migrate old category system → new plant/subcategory system
+        if (!p.plant) p.plant = 'Umum';
+        if (!p.subcategory) {
+            if (p.category && SUB_CATEGORIES.includes(capitalize(p.category))) {
+                p.subcategory = capitalize(p.category);
+            } else {
+                p.subcategory = 'Umum';
+            }
+        }
+        if (!p.category) p.category = p.subcategory;
         if (!p.symptoms) p.symptoms = '';
         if (!p.treatment) p.treatment = '';
         if (!p.image) p.image = '';
@@ -273,21 +222,23 @@ function migratePages() {
     });
 }
 
-// ── ROUTER ──
+// ── Router ──
 function handleRoute() {
     document.getElementById('app-sidebar').classList.remove('open');
     const hash = window.location.hash || '#/page/home';
 
     if (hash.startsWith('#/page/')) showViewMode(hash.replace('#/page/', ''));
     else if (hash.startsWith('#/edit/')) showEditMode(hash.replace('#/edit/', ''));
-    else if (hash.startsWith('#/new')) { const p = new URLSearchParams(hash.substring(hash.indexOf('?'))); showEditMode(null, p.get('title') || ''); }
-    else window.location.hash = '#/page/home';
+    else if (hash.startsWith('#/new')) {
+        const p = new URLSearchParams(hash.substring(hash.indexOf('?')));
+        showEditMode(null, p.get('title') || '');
+    } else window.location.hash = '#/page/home';
 
     renderSidebar();
 }
 
 // ══════════════════════
-//  VIEW MODE
+//  View Mode
 // ══════════════════════
 function showViewMode(slug) {
     document.getElementById('edit-mode').style.display = 'none';
@@ -302,23 +253,26 @@ function showViewMode(slug) {
 
     renderSidebar();
 
-    const titleEl = document.getElementById('view-page-title');
-    const statsEl = document.getElementById('view-page-stats');
-    const breadcrumbsEl = document.getElementById('page-breadcrumbs');
+    const titleEl  = document.getElementById('view-page-title');
+    const statsEl  = document.getElementById('view-page-stats');
+    const crumbsEl = document.getElementById('page-breadcrumbs');
 
-    if (activeTag) {
-        titleEl.textContent = `Kategori: ${activeTag}`;
-        breadcrumbsEl.innerHTML = `AgroLibrary &gt; Kategori &gt; <span>${activeTag}</span>`;
+    if (activePlant && activeSubcat) {
+        titleEl.textContent = `${activePlant} › ${activeSubcat}`;
+        crumbsEl.innerHTML = `AgroLibrary &gt; ${activePlant} &gt; <span>${activeSubcat}</span>`;
+    } else if (activePlant) {
+        titleEl.textContent = `Tanaman: ${activePlant}`;
+        crumbsEl.innerHTML = `AgroLibrary &gt; Tanaman &gt; <span>${activePlant}</span>`;
     } else if (searchQuery) {
         titleEl.textContent = `Hasil Pencarian`;
-        breadcrumbsEl.innerHTML = `AgroLibrary &gt; <span>Pencarian</span>`;
+        crumbsEl.innerHTML = `AgroLibrary &gt; <span>Pencarian</span>`;
     } else {
         titleEl.textContent = `Pustaka Agro`;
-        breadcrumbsEl.innerHTML = `AgroLibrary &gt; <span>Semua</span>`;
+        crumbsEl.innerHTML = `AgroLibrary &gt; <span>Beranda</span>`;
     }
 
-    const visibleCount = document.querySelectorAll('.info-card').length;
-    statsEl.textContent = `Menampilkan ${visibleCount} item`;
+    const itemCount = pages.filter(p => p.slug !== 'home').length;
+    statsEl.textContent = `${itemCount} item terdaftar`;
 
     if (page && slug !== 'home') {
         activePage = page;
@@ -328,6 +282,7 @@ function showViewMode(slug) {
     }
 }
 
+// ── Cards Grid ──
 function renderCardsGrid() {
     const grid = document.getElementById('cards-grid');
     if (!grid) return;
@@ -340,36 +295,33 @@ function renderCardsGrid() {
             || (p.description || '').toLowerCase().includes(q)
             || (p.symptoms || '').toLowerCase().includes(q)
             || (p.treatment || '').toLowerCase().includes(q);
-        return match && (!activeTag || p.category === activeTag);
+        const plantMatch  = !activePlant  || (p.plant || 'Umum') === activePlant;
+        const subcatMatch = !activeSubcat || (p.subcategory || 'Umum') === activeSubcat;
+        return match && plantMatch && subcatMatch;
     });
 
     const container = document.querySelector('.cards-grid-container');
     const oldBanner = container.querySelector('.home-hero-section');
     if (oldBanner) oldBanner.remove();
 
-    if (!activeTag && !searchQuery) {
-        const allItems = pages.filter(p => p.slug !== 'home');
+    // ── Homepage: only show intro, no cards ──
+    if (!activePlant && !activeSubcat && !searchQuery) {
+        const allItems  = pages.filter(p => p.slug !== 'home');
         const totalItems = allItems.length;
-        const categories = [...new Set(allItems.map(p => p.category))];
-        const itemsWithPhoto = allItems.filter(p => p.image).length;
-
-        const byDate = [...allItems].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-        const byViews = [...allItems].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
-        const diseaseItems = [...allItems]
-            .filter(p => ['penyakit', 'hama'].includes((p.category || '').toLowerCase()))
-            .sort((a, b) => {
-                const diff = (b.likesCount || 0) - (a.likesCount || 0);
-                if (diff !== 0) return diff;
-                return (b.viewCount || 0) - (a.viewCount || 0);
-            });
+        const plants    = [...new Set(allItems.map(p => p.plant || 'Umum'))].filter(Boolean);
+        const subcats   = [...new Set(allItems.map(p => p.subcategory || 'Umum'))].filter(Boolean);
 
         const banner = document.createElement('div');
-        banner.className = 'home-hero-section';
+        banner.className = 'home-hero-section home-intro-only';
         banner.innerHTML = `
-            <div class="home-hero-top">
+            <div class="home-intro-container">
                 <div class="home-hero-badge">🌾 AgroLibrary</div>
                 <h2 class="home-hero-headline">Ensiklopedia Pertanian<br><span class="home-hero-accent">Cerdas &amp; Lengkap</span></h2>
-                <p class="home-hero-sub">Temukan, identifikasi, dan atasi masalah tanaman dengan mudah — didukung foto visual, sistem kategori, dan pencarian instan berbasis data.</p>
+                <p class="home-intro-body">
+                    Platform digital untuk mengidentifikasi, mendokumentasikan, dan mengelola
+                    informasi penyakit tanaman, hama, teknik budidaya, serta pengelolaan kebun.
+                    Temukan solusi pertanian berbasis data dengan pencarian cepat dan sistem kategori terstruktur.
+                </p>
                 <div class="home-hero-stats">
                     <div class="home-stat-pill">
                         <span class="home-stat-num">${totalItems}</span>
@@ -377,104 +329,25 @@ function renderCardsGrid() {
                     </div>
                     <div class="home-stat-divider"></div>
                     <div class="home-stat-pill">
-                        <span class="home-stat-num">${categories.length}</span>
-                        <span class="home-stat-label">Kategori</span>
+                        <span class="home-stat-num">${plants.length}</span>
+                        <span class="home-stat-label">Jenis Tanaman</span>
                     </div>
                     <div class="home-stat-divider"></div>
                     <div class="home-stat-pill">
-                        <span class="home-stat-num">${itemsWithPhoto}</span>
-                        <span class="home-stat-label">Ada Foto</span>
+                        <span class="home-stat-num">${subcats.length}</span>
+                        <span class="home-stat-label">Sub-Kategori</span>
                     </div>
                 </div>
-            </div>
-
-            <div class="home-section-header">
-                <div class="home-section-title-wrap">
-                    <span class="home-section-icon">⚡</span>
-                    <h3 class="home-section-title">Fitur Unggulan</h3>
-                </div>
-                <p class="home-section-subtitle">Mengapa AgroLibrary menjadi pilihan tepat untuk pengelolaan informasi pertanian Anda</p>
-            </div>
-            <div class="home-features-desc-grid">
-                <div class="feat-desc-item">
-                    <div class="feat-desc-icon feat-desc-amber">🗂️</div>
-                    <h4 class="feat-desc-title">Sistem Kategorisasi</h4>
-                    <p class="feat-desc-body">Seluruh data diorganisir secara sistematis dalam kategori <strong>Penyakit, Hama, Tanaman,</strong> dan kategori lainnya.</p>
-                </div>
-                <div class="feat-desc-item">
-                    <div class="feat-desc-icon feat-desc-teal">🔍</div>
-                    <h4 class="feat-desc-title">Pencarian Real-Time</h4>
-                    <p class="feat-desc-body">Mesin pencari internal menelusuri <strong>judul, penyebab, gejala, dan cara penanganan</strong> secara bersamaan.</p>
-                </div>
-                <div class="feat-desc-item">
-                    <div class="feat-desc-icon feat-desc-green">📸</div>
-                    <h4 class="feat-desc-title">Foto di Cloud</h4>
-                    <p class="feat-desc-body">Foto disimpan di <strong>Cloudinary</strong> — tersedia di semua perangkat tanpa batas ukuran storage browser.</p>
-                </div>
-                <div class="feat-desc-item">
-                    <div class="feat-desc-icon feat-desc-blue">🔄</div>
-                    <h4 class="feat-desc-title">Sinkron Otomatis</h4>
-                    <p class="feat-desc-body">Data tersimpan di <strong>Firebase Cloud</strong> dan tersinkron otomatis di semua perangkat secara real-time.</p>
-                </div>
-            </div>
-
-            ${byDate.length > 0 ? `
-            <div class="home-section-header">
-                <div class="home-section-title-wrap">
-                    <span class="home-section-icon">📅</span>
-                    <h3 class="home-section-title">Konten Terbaru</h3>
-                </div>
-                <p class="home-section-subtitle">Item yang baru ditambahkan atau diperbarui</p>
-            </div>
-            <div class="home-row-scroll" id="row-terbaru">
-                ${byDate.slice(0, 8).map(p => buildRowCard(p)).join('')}
-            </div>` : ''}
-
-            ${byViews.filter(p => (p.viewCount || 0) > 0).length > 0 ? `
-            <div class="home-section-header">
-                <div class="home-section-title-wrap">
-                    <span class="home-section-icon">🔥</span>
-                    <h3 class="home-section-title">Paling Banyak Dicari</h3>
-                </div>
-                <p class="home-section-subtitle">Item yang paling sering dibuka dan dilihat</p>
-            </div>
-            <div class="home-row-scroll" id="row-dicari">
-                ${byViews.slice(0, 8).map(p => buildRowCard(p, 'views')).join('')}
-            </div>` : ''}
-
-            ${diseaseItems.length > 0 ? `
-            <div class="home-section-header">
-                <div class="home-section-title-wrap">
-                    <span class="home-section-icon">🦠</span>
-                    <h3 class="home-section-title">Paling Sering Terdampak</h3>
-                </div>
-                <p class="home-section-subtitle">Penyakit dan hama yang paling banyak menjangkiti tanaman</p>
-            </div>
-            <div class="home-row-scroll" id="row-terdampak">
-                ${diseaseItems.slice(0, 8).map(p => buildRowCard(p, 'disease')).join('')}
-            </div>` : ''}
-
-            <div class="home-all-items-header">
-                <div class="home-section-title-wrap">
-                    <span class="home-section-icon">📚</span>
-                    <h3 class="home-section-title">Semua Item</h3>
-                </div>
-                <span class="home-all-items-count">${totalItems} item terdaftar</span>
+                <p class="home-intro-cta">🌿 Pilih kategori tanaman di sidebar kiri untuk mulai menjelajahi</p>
             </div>
         `;
-
-        banner.querySelectorAll('.home-row-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const slug = card.dataset.slug;
-                if (slug) window.location.hash = `#/page/${slug}`;
-            });
-        });
-
         container.insertBefore(banner, grid);
+        return; // No cards on homepage
     }
 
     if (!filtered.length) {
-        grid.innerHTML = `<div class="sidebar-empty" style="grid-column: 1/-1; text-align: center; padding: 40px 0; font-size: 1rem;">Tidak ada kartu informasi ditemukan</div>`;
+        grid.innerHTML = `<div class="sidebar-empty" style="grid-column:1/-1;text-align:center;padding:40px 0;font-size:1rem;">
+            Tidak ada item ditemukan untuk filter ini</div>`;
         return;
     }
 
@@ -483,28 +356,32 @@ function renderCardsGrid() {
         card.className = 'info-card';
         card.style.animationDelay = `${idx * 0.05}s`;
 
-        const catClass = `category-${slugify(p.category || 'umum')}`;
+        const plantClass  = `plant-${slugify(p.plant || 'umum')}`;
+        const subcatClass = `subcat-${slugify(p.subcategory || 'umum')}`;
 
-        let imageHtml = '';
-        if (p.image) {
-            imageHtml = `<img src="${p.image}" alt="${p.title}" loading="lazy">`;
-        } else {
-            imageHtml = `<div class="info-card-placeholder">🌿</div>`;
-        }
+        const imageHtml = p.image
+            ? `<img src="${p.image}" alt="${p.title}" loading="lazy">`
+            : `<div class="info-card-placeholder">${getPlantEmoji(p.plant)}</div>`;
 
-        const descSnippet = p.description ? parseMarkdown(p.description) : '';
-        const symptomsSnippet = p.symptoms ? parseMarkdown(p.symptoms) : '';
-        const treatmentSnippet = p.treatment ? parseMarkdown(p.treatment) : '';
+        const descSnippet     = p.description ? parseMarkdown(p.description) : '';
+        const symptomsSnippet = p.symptoms    ? parseMarkdown(p.symptoms)    : '';
+        const treatmentSnippet= p.treatment   ? parseMarkdown(p.treatment)   : '';
+
+        const devButtons = isDeveloper ? `
+            <button class="btn btn-outline btn-card-edit" onclick="window.location.hash='#/edit/${p.slug}'">✏️ Edit</button>
+            <button class="btn btn-danger btn-card-delete" data-slug="${p.slug}">🗑️</button>
+        ` : '';
 
         card.innerHTML = `
-            <span class="info-card-badge ${catClass}">${p.category || 'Umum'}</span>
-            <div class="info-card-image" onclick="window.location.hash = '#/page/${p.slug}'">
-                ${imageHtml}
+            <div class="info-card-badges">
+                <span class="info-card-badge badge-plant ${plantClass}">${getPlantEmoji(p.plant)} ${p.plant || 'Umum'}</span>
+                <span class="info-card-badge badge-subcat ${subcatClass}">${getSubcatEmoji(p.subcategory)} ${p.subcategory || 'Umum'}</span>
             </div>
-            <div class="info-card-body" onclick="window.location.hash = '#/page/${p.slug}'">
+            <div class="info-card-image" onclick="window.location.hash='#/page/${p.slug}'">${imageHtml}</div>
+            <div class="info-card-body" onclick="window.location.hash='#/page/${p.slug}'">
                 <h3 class="info-card-title">${p.title}</h3>
                 <div class="card-info-section card-info-desc">
-                    <span class="card-info-section-title">📝 Penyebab</span>
+                    <span class="card-info-section-title">📝 Penyebab / Deskripsi</span>
                     <div class="card-info-section-body">${descSnippet}</div>
                 </div>
                 ${p.symptoms && p.symptoms.trim() ? `
@@ -519,69 +396,51 @@ function renderCardsGrid() {
                 </div>` : ''}
             </div>
             <div class="info-card-footer">
-                <button class="btn btn-outline btn-card-view" onclick="window.location.hash = '#/page/${p.slug}'">👁️ Lihat</button>
-                <button class="btn btn-outline btn-card-edit" onclick="window.location.hash = '#/edit/${p.slug}'">✏️ Edit</button>
-                <button class="btn btn-danger btn-card-delete" data-slug="${p.slug}">🗑️</button>
+                <button class="btn btn-outline btn-card-view" onclick="window.location.hash='#/page/${p.slug}'">👁️ Lihat</button>
+                ${devButtons}
             </div>
         `;
 
-        card.querySelector('.btn-card-delete').addEventListener('click', (e) => {
-            e.stopPropagation();
-            const slug = e.currentTarget.dataset.slug;
-            const targetPage = pages.find(page => page.slug === slug);
-            if (targetPage) {
-                showModal('Hapus Item?', `Yakin ingin menghapus "${targetPage.title}"? Tindakan ini tidak dapat dibatalkan.`, () => deletePage(slug));
+        if (isDeveloper) {
+            const delBtn = card.querySelector('.btn-card-delete');
+            if (delBtn) {
+                delBtn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const slug = e.currentTarget.dataset.slug;
+                    const tp = pages.find(pg => pg.slug === slug);
+                    if (tp) showModal('Hapus Item?', `Yakin ingin menghapus "${tp.title}"? Tidak dapat dibatalkan.`, () => deletePage(slug));
+                });
             }
-        });
+        }
 
         grid.appendChild(card);
     });
 }
 
-// ── BUILD ROW CARD ──
-function buildRowCard(p, variant = '') {
-    const catClass = `category-${slugify(p.category || 'umum')}`;
-    const imgHtml = p.image
-        ? `<div class="row-card-img" style="background-image:url('${p.image}')"></div>`
-        : `<div class="row-card-img row-card-img-placeholder"><span>${getCategoryEmoji(p.category)}</span></div>`;
-
-    const metaHtml = variant === 'views'
-        ? `<span class="row-card-meta">👁 ${p.viewCount || 0} kali dilihat</span>`
-        : variant === 'disease'
-            ? `<span class="row-card-meta row-card-meta-danger">👍 Terdampak: ${p.likesCount || 0}</span>`
-            : `<span class="row-card-meta">🕐 ${formatDate(p.updatedAt)}</span>`;
-
-    const snippet = (p.description || '').replace(/[#*_`\[\]]/g, '').substring(0, 80) + '...';
-
-    return `
-        <div class="home-row-card" data-slug="${p.slug}" title="${p.title}">
-            ${imgHtml}
-            <div class="row-card-body">
-                <span class="row-card-badge ${catClass}">${p.category || 'Umum'}</span>
-                <h4 class="row-card-title">${p.title}</h4>
-                <p class="row-card-snippet">${snippet}</p>
-                ${metaHtml}
-            </div>
-        </div>
-    `;
+// ── Plant & Subcategory Emojis ──
+function getPlantEmoji(plant) {
+    const map = { 'Sawit':'🌴','Kopi':'☕','Padi':'🌾','Jagung':'🌽','Kelapa':'🥥','Karet':'🌳','Kakao':'🍫','Teh':'🍵','Tebu':'🎋','Umum':'🌿' };
+    return map[plant] || '🌿';
 }
-
-function getCategoryEmoji(cat) {
-    const map = { 'Penyakit': '🦠', 'Hama': '🐛', 'Tanaman': '🌱', 'Umum': '📋' };
-    return map[cat] || '🌿';
+function getSubcatEmoji(subcat) {
+    const map = { 'Penyakit':'🦠','Hama':'🐛','Pupuk':'🧪','Budidaya':'🌱','Pascapanen':'📦','Umum':'📄' };
+    return map[subcat] || '📄';
 }
+// legacy compat
+function getCategoryEmoji(cat) { return getSubcatEmoji(cat); }
 
+// ── Info Popup ──
 function showInfoPopup(page) {
     const popup = document.getElementById('info-popup');
     if (!popup) return;
 
-    const catEl = document.getElementById('popup-category');
-    const dateEl = document.getElementById('popup-date');
+    const catEl   = document.getElementById('popup-category');
+    const dateEl  = document.getElementById('popup-date');
     const titleEl = document.getElementById('popup-title');
-    const bodyEl = document.getElementById('popup-body');
+    const bodyEl  = document.getElementById('popup-body');
 
-    catEl.textContent = page.category || 'Umum';
-    catEl.className = `info-popup-category category-${slugify(page.category || 'umum')}`;
+    catEl.textContent = `${getPlantEmoji(page.plant || 'Umum')} ${page.plant || 'Umum'} › ${page.subcategory || 'Umum'}`;
+    catEl.className   = `info-popup-category plant-${slugify(page.plant || 'umum')}`;
     dateEl.textContent = `Diperbarui: ${formatDate(page.updatedAt)}`;
     titleEl.textContent = page.title;
     bodyEl.innerHTML = '';
@@ -596,29 +455,29 @@ function showInfoPopup(page) {
     const descSection = document.createElement('div');
     descSection.className = 'article-section section-description';
     descSection.innerHTML = `
-        <h3 class="article-section-title"><span class="section-icon">📝</span> Penyebab</h3>
+        <h3 class="article-section-title"><span class="section-icon">📝</span> Penyebab / Deskripsi</h3>
         <div class="markdown-body">${parseMarkdown(page.description || '')}</div>
     `;
     bodyEl.appendChild(descSection);
 
     if (page.symptoms && page.symptoms.trim()) {
-        const symptomsSection = document.createElement('div');
-        symptomsSection.className = 'article-section section-symptoms';
-        symptomsSection.innerHTML = `
+        const s = document.createElement('div');
+        s.className = 'article-section section-symptoms';
+        s.innerHTML = `
             <h3 class="article-section-title"><span class="section-icon">⚠️</span> Ciri-Ciri / Gejala</h3>
             <div class="markdown-body">${parseMarkdown(page.symptoms)}</div>
         `;
-        bodyEl.appendChild(symptomsSection);
+        bodyEl.appendChild(s);
     }
 
     if (page.treatment && page.treatment.trim()) {
-        const treatmentSection = document.createElement('div');
-        treatmentSection.className = 'article-section section-treatment';
-        treatmentSection.innerHTML = `
+        const t = document.createElement('div');
+        t.className = 'article-section section-treatment';
+        t.innerHTML = `
             <h3 class="article-section-title"><span class="section-icon">✅</span> Cara Penanggulangan</h3>
             <div class="markdown-body">${parseMarkdown(page.treatment)}</div>
         `;
-        bodyEl.appendChild(treatmentSection);
+        bodyEl.appendChild(t);
     }
 
     if (page.slug !== 'home') {
@@ -629,12 +488,15 @@ function showInfoPopup(page) {
     const likeBtn = document.getElementById('popup-like-btn');
     if (likeBtn) {
         const likedSlugs = getLikedSlugs();
-        const hasLiked = likedSlugs.includes(page.slug);
-        if (hasLiked) likeBtn.classList.add('btn-liked');
-        else likeBtn.classList.remove('btn-liked');
-        const likeCountEl = document.getElementById('popup-like-count');
-        if (likeCountEl) likeCountEl.textContent = page.likesCount || 0;
+        likeBtn.classList.toggle('btn-liked', likedSlugs.includes(page.slug));
+        const countEl = document.getElementById('popup-like-count');
+        if (countEl) countEl.textContent = page.likesCount || 0;
     }
+
+    const editBtn   = document.getElementById('popup-edit-btn');
+    const deleteBtn = document.getElementById('popup-delete-btn');
+    if (editBtn)   editBtn.style.display   = isDeveloper ? '' : 'none';
+    if (deleteBtn) deleteBtn.style.display = isDeveloper ? '' : 'none';
 
     popup.classList.add('show');
     popup.setAttribute('aria-hidden', 'false');
@@ -652,38 +514,45 @@ function closeInfoPopup(updateHash = true) {
 }
 
 // ══════════════════════
-//  EDIT MODE
+//  Edit Mode
 // ══════════════════════
 function showEditMode(slug = null, prefill = '') {
+    if (!isDeveloper) {
+        showToast('Login sebagai Developer untuk mengedit data!', 'error');
+        window.location.hash = '#/page/home';
+        return;
+    }
     closeInfoPopup(false);
     document.getElementById('view-mode').style.display = 'none';
     document.getElementById('edit-mode').style.display = 'flex';
 
     const el = id => document.getElementById(id);
     el('title-error').textContent = '';
-    populateCategorySuggestions();
+    populatePlantOptions();
 
     if (slug) {
         const page = pages.find(p => p.slug === slug);
         if (!page) { window.location.hash = '#/page/home'; return; }
         activePage = page;
         el('edit-view-title').textContent = `Sunting: ${page.title}`;
-        el('edit-title').value = page.title;
-        el('edit-category').value = page.category || '';
+        el('edit-title').value      = page.title;
+        el('edit-plant').value      = page.plant || 'Umum';
+        el('edit-subcategory').value= page.subcategory || 'Umum';
         page.image ? setImagePreview(page.image) : clearImagePreview();
         el('edit-description').value = page.description || page.content || '';
-        el('edit-symptoms').value = page.symptoms || '';
-        el('edit-treatment').value = page.treatment || '';
+        el('edit-symptoms').value    = page.symptoms || '';
+        el('edit-treatment').value   = page.treatment || '';
         el('edit-breadcrumbs').innerHTML = `AgroLibrary &gt; Edit &gt; <span>${page.title}</span>`;
     } else {
         activePage = null;
         el('edit-view-title').textContent = 'Tambah Item Baru';
-        el('edit-title').value = prefill;
-        el('edit-category').value = '';
+        el('edit-title').value       = prefill;
+        el('edit-plant').value       = activePlant || 'Umum';
+        el('edit-subcategory').value = activeSubcat || 'Umum';
         clearImagePreview();
         el('edit-description').value = '';
-        el('edit-symptoms').value = '';
-        el('edit-treatment').value = '';
+        el('edit-symptoms').value    = '';
+        el('edit-treatment').value   = '';
         el('edit-breadcrumbs').innerHTML = `AgroLibrary &gt; <span>Tambah Item Baru</span>`;
     }
     lastFocusedTextarea = el('edit-description');
@@ -691,35 +560,36 @@ function showEditMode(slug = null, prefill = '') {
 
 async function saveActivePage() {
     const el = id => document.getElementById(id);
-    const title = el('edit-title').value.trim();
-    let category = el('edit-category').value.trim();
-    const description = el('edit-description').value;
-    const symptoms = el('edit-symptoms').value;
-    const treatment = el('edit-treatment').value;
-
-    if (!category) category = 'Umum';
-    else category = capitalize(category);
+    const title      = el('edit-title').value.trim();
+    const plant      = el('edit-plant').value || 'Umum';
+    const subcategory= el('edit-subcategory').value || 'Umum';
+    const description= el('edit-description').value;
+    const symptoms   = el('edit-symptoms').value;
+    const treatment  = el('edit-treatment').value;
 
     if (!title) { el('title-error').textContent = 'Nama item tidak boleh kosong!'; el('edit-title').focus(); return; }
 
-    const newSlug = slugify(title);
+    const newSlug  = slugify(title);
     const conflict = pages.find(p => p.slug === newSlug && (!activePage || activePage.slug !== p.slug));
     if (conflict) { el('title-error').textContent = 'Nama ini sudah digunakan!'; el('edit-title').focus(); return; }
 
     if (activePage) {
-        activePage.title = title;
-        activePage.slug = newSlug;
-        activePage.category = category;
-        activePage.image = currentImageData;
+        activePage.title       = title;
+        activePage.slug        = newSlug;
+        activePage.plant       = plant;
+        activePage.subcategory = subcategory;
+        activePage.category    = subcategory;
+        activePage.image       = currentImageData;
         activePage.description = description;
-        activePage.content = description;
-        activePage.symptoms = symptoms;
-        activePage.treatment = treatment;
-        activePage.updatedAt = new Date().toISOString();
+        activePage.content     = description;
+        activePage.symptoms    = symptoms;
+        activePage.treatment   = treatment;
+        activePage.updatedAt   = new Date().toISOString();
         showToast('Data berhasil disimpan! 💾');
     } else {
         pages.push({
-            slug: newSlug, title, category,
+            slug: newSlug, title,
+            plant, subcategory, category: subcategory,
             image: currentImageData, description, content: description,
             symptoms, treatment, updatedAt: new Date().toISOString(),
             viewCount: 0, likesCount: 0
@@ -742,79 +612,190 @@ async function deletePage(slug) {
 }
 
 // ══════════════════════
-//  SIDEBAR
+//  Sidebar
 // ══════════════════════
 function renderSidebar() {
     const homeLink = document.getElementById('sidebar-home-link');
     if (homeLink) {
-        const hash = window.location.hash || '#/page/home';
-        if (hash === '#/page/home') homeLink.classList.add('active');
-        else homeLink.classList.remove('active');
+        homeLink.classList.toggle('active', !activePlant && !activeSubcat && !searchQuery);
     }
 
-    const cats = {};
-    pages.filter(p => p.slug !== 'home').forEach(p => { const c = p.category || 'Umum'; cats[c] = (cats[c] || 0) + 1; });
+    const plantTagsDiv = document.getElementById('sidebar-plant-tags');
+    if (!plantTagsDiv) return;
+    plantTagsDiv.innerHTML = '';
 
-    const tagsDiv = document.getElementById('sidebar-tags');
-    tagsDiv.innerHTML = '';
+    const itemPages  = pages.filter(p => p.slug !== 'home');
+    const allPlants  = [...new Set(itemPages.map(p => p.plant || 'Umum'))];
 
+    // "Semua" badge
     const allBadge = document.createElement('span');
-    allBadge.className = 'tag-badge' + (!activeTag ? ' active' : '');
-    allBadge.textContent = `Semua (${pages.filter(p => p.slug !== 'home').length})`;
-    allBadge.onclick = () => { activeTag = null; renderSidebar(); };
-    tagsDiv.appendChild(allBadge);
+    allBadge.className = 'tag-badge' + (!activePlant ? ' active' : '');
+    allBadge.textContent = `Semua (${itemPages.length})`;
+    allBadge.onclick = () => {
+        activePlant = null; activeSubcat = null;
+        renderSidebar(); renderFilterChips();
+        window.location.hash = '#/page/home';
+    };
+    plantTagsDiv.appendChild(allBadge);
 
-    Object.keys(cats).sort().forEach(cat => {
+    PLANT_CATEGORIES.filter(pl => allPlants.includes(pl)).forEach(pl => {
+        const count = itemPages.filter(p => (p.plant || 'Umum') === pl).length;
         const b = document.createElement('span');
-        b.className = `tag-badge tag-category-${slugify(cat)}` + (activeTag === cat ? ' active' : '');
-        b.textContent = `${cat} (${cats[cat]})`;
-        b.onclick = () => { activeTag = activeTag === cat ? null : cat; renderSidebar(); };
-        tagsDiv.appendChild(b);
+        b.className = `tag-badge tag-plant-${slugify(pl)}` + (activePlant === pl ? ' active' : '');
+        b.textContent = `${getPlantEmoji(pl)} ${pl} (${count})`;
+        b.onclick = () => {
+            activePlant  = (activePlant === pl) ? null : pl;
+            activeSubcat = null;
+            renderSidebar(); renderFilterChips();
+            if (!activePlant) window.location.hash = '#/page/home';
+        };
+        plantTagsDiv.appendChild(b);
     });
 
+    // Sub-category section
+    const subcatSection  = document.getElementById('sidebar-subcat-section');
+    const subcatTagsDiv  = document.getElementById('sidebar-subcat-tags');
+    if (activePlant && subcatSection && subcatTagsDiv) {
+        subcatSection.style.display = 'block';
+        subcatTagsDiv.innerHTML = '';
+
+        const plantItems     = itemPages.filter(p => (p.plant || 'Umum') === activePlant);
+        const availableSubcats = [...new Set(plantItems.map(p => p.subcategory || 'Umum'))];
+
+        const allSubBadge = document.createElement('span');
+        allSubBadge.className = 'tag-badge' + (!activeSubcat ? ' active' : '');
+        allSubBadge.textContent = `Semua (${plantItems.length})`;
+        allSubBadge.onclick = () => { activeSubcat = null; renderSidebar(); renderFilterChips(); };
+        subcatTagsDiv.appendChild(allSubBadge);
+
+        SUB_CATEGORIES.filter(sc => availableSubcats.includes(sc)).forEach(sc => {
+            const count = plantItems.filter(p => (p.subcategory || 'Umum') === sc).length;
+            const b = document.createElement('span');
+            b.className = `tag-badge tag-subcat-${slugify(sc)}` + (activeSubcat === sc ? ' active' : '');
+            b.textContent = `${getSubcatEmoji(sc)} ${sc} (${count})`;
+            b.onclick = () => { activeSubcat = (activeSubcat === sc) ? null : sc; renderSidebar(); renderFilterChips(); };
+            subcatTagsDiv.appendChild(b);
+        });
+    } else if (subcatSection) {
+        subcatSection.style.display = 'none';
+    }
+
+    // ── Page List ──
     const list = document.getElementById('sidebar-page-list');
+    if (!list) { renderCardsGrid(); return; }
     list.innerHTML = '';
 
     const filtered = pages.filter(p => {
         if (p.slug === 'home') return false;
-        const q = searchQuery.toLowerCase();
-        const match = !q || p.title.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q)
-            || (p.symptoms || '').toLowerCase().includes(q) || (p.treatment || '').toLowerCase().includes(q);
-        return match && (!activeTag || p.category === activeTag);
+        const q     = searchQuery.toLowerCase();
+        const match = !q || p.title.toLowerCase().includes(q)
+            || (p.description || '').toLowerCase().includes(q)
+            || (p.symptoms    || '').toLowerCase().includes(q)
+            || (p.treatment   || '').toLowerCase().includes(q);
+        const plantMatch  = !activePlant  || (p.plant || 'Umum') === activePlant;
+        const subcatMatch = !activeSubcat || (p.subcategory || 'Umum') === activeSubcat;
+        return match && plantMatch && subcatMatch;
     });
 
-    if (!filtered.length) { list.innerHTML = `<li class="sidebar-empty">Tidak ada item ditemukan</li>`; renderCardsGrid(); return; }
+    if (!filtered.length) {
+        list.innerHTML = `<li class="sidebar-empty">Tidak ada item ditemukan</li>`;
+        renderCardsGrid();
+        return;
+    }
 
+    // Group by subcategory (when plant is selected) or by plant
     const groups = {};
-    filtered.forEach(p => { const c = p.category || 'Umum'; (groups[c] = groups[c] || []).push(p); });
-
-    Object.keys(groups).sort((a, b) => a === 'Umum' ? 1 : b === 'Umum' ? -1 : a.localeCompare(b)).forEach(cat => {
-        const hdr = document.createElement('li');
-        hdr.className = 'sidebar-group-header';
-        hdr.innerHTML = `<span>${cat}</span><span class="group-header-count">${groups[cat].length}</span>`;
-        list.appendChild(hdr);
-
-        groups[cat].sort((a, b) => a.title.localeCompare(b.title)).forEach(p => {
-            const li = document.createElement('li');
-            li.className = 'page-item';
-            const a = document.createElement('a');
-            a.href = `#/page/${p.slug}`;
-            a.className = 'page-link' + (activePage && activePage.slug === p.slug ? ' active' : '');
-
-            const icon = cat.toLowerCase() === 'penyakit' ? '🦠' :
-                cat.toLowerCase() === 'hama' ? '🐛' :
-                    cat.toLowerCase() === 'tanaman' ? '🌱' :
-                        cat.toLowerCase() === 'pupuk' ? '🧪' : '📄';
-
-            a.innerHTML = `<span class="page-link-icon">${icon}</span><span class="page-link-text">${p.title}</span>`;
-            li.appendChild(a);
-            list.appendChild(li);
-        });
+    filtered.forEach(p => {
+        const key = activePlant ? (p.subcategory || 'Umum') : (p.plant || 'Umum');
+        (groups[key] = groups[key] || []).push(p);
     });
+
+    Object.keys(groups)
+        .sort((a, b) => a === 'Umum' ? 1 : b === 'Umum' ? -1 : a.localeCompare(b))
+        .forEach(groupKey => {
+            const hdr = document.createElement('li');
+            hdr.className = 'sidebar-group-header';
+            const icon = activePlant ? getSubcatEmoji(groupKey) : getPlantEmoji(groupKey);
+            hdr.innerHTML = `<span>${icon} ${groupKey}</span><span class="group-header-count">${groups[groupKey].length}</span>`;
+            list.appendChild(hdr);
+
+            groups[groupKey].sort((a, b) => a.title.localeCompare(b.title)).forEach(p => {
+                const li = document.createElement('li');
+                li.className = 'page-item';
+                const a = document.createElement('a');
+                a.href = `#/page/${p.slug}`;
+                a.className = 'page-link' + (activePage && activePage.slug === p.slug ? ' active' : '');
+                a.innerHTML = `<span class="page-link-icon">${getSubcatEmoji(p.subcategory)}</span><span class="page-link-text">${p.title}</span>`;
+                li.appendChild(a);
+                list.appendChild(li);
+            });
+        });
+
     renderCardsGrid();
 }
 
-// ── IMAGE HELPERS ──
+// ── Filter Chips ──
+function renderFilterChips() {
+    const bar = document.getElementById('filter-chips-bar');
+    if (!bar) return;
+
+    if (!activePlant && !activeSubcat && !searchQuery) {
+        bar.style.display = 'none';
+        return;
+    }
+
+    bar.style.display = 'flex';
+    bar.innerHTML = '';
+
+    const mkChip = (label, onRemove, extra = '') => {
+        const chip = document.createElement('span');
+        chip.className = `filter-chip${extra}`;
+        chip.textContent = label;
+        const x = document.createElement('button');
+        x.textContent = '✕'; x.className = 'filter-chip-x'; x.onclick = onRemove;
+        chip.appendChild(x);
+        return chip;
+    };
+
+    if (activePlant) {
+        bar.appendChild(mkChip(`${getPlantEmoji(activePlant)} ${activePlant}`, () => {
+            activePlant = null; activeSubcat = null;
+            renderSidebar(); renderFilterChips();
+            window.location.hash = '#/page/home';
+        }));
+    }
+    if (activeSubcat) {
+        bar.appendChild(mkChip(`${getSubcatEmoji(activeSubcat)} ${activeSubcat}`, () => {
+            activeSubcat = null; renderSidebar(); renderFilterChips();
+        }, ' filter-chip-sub'));
+    }
+    if (searchQuery) {
+        bar.appendChild(mkChip(`🔍 "${searchQuery}"`, () => {
+            searchQuery = '';
+            const inp = document.getElementById('search-input');
+            const clr = document.getElementById('clear-search-btn');
+            if (inp) inp.value = '';
+            if (clr) clr.style.display = 'none';
+            renderSidebar(); renderFilterChips();
+        }, ' filter-chip-search'));
+    }
+
+    const clearAll = document.createElement('button');
+    clearAll.className = 'btn btn-xs filter-clear-all';
+    clearAll.textContent = '✕ Hapus Semua';
+    clearAll.onclick = () => {
+        activePlant = null; activeSubcat = null; searchQuery = '';
+        const inp = document.getElementById('search-input');
+        const clr = document.getElementById('clear-search-btn');
+        if (inp) inp.value = '';
+        if (clr) clr.style.display = 'none';
+        renderSidebar(); renderFilterChips();
+        window.location.hash = '#/page/home';
+    };
+    bar.appendChild(clearAll);
+}
+
+// ── Image Helpers ──
 function setImagePreview(src) {
     currentImageData = src;
     document.getElementById('edit-image-preview').src = src;
@@ -824,23 +805,36 @@ function setImagePreview(src) {
 function clearImagePreview() {
     currentImageData = '';
     document.getElementById('edit-image-file').value = '';
-    document.getElementById('edit-image-url').value = '';
+    document.getElementById('edit-image-url').value  = '';
     document.getElementById('edit-image-preview-container').style.display = 'none';
     document.getElementById('edit-image-preview').src = '';
 }
 
-function populateCategorySuggestions() {
-    const list = document.getElementById('category-suggestions');
-    if (!list) return;
-    list.innerHTML = '';
-    const cats = new Set(['Penyakit', 'Hama', 'Tanaman', 'Pupuk', 'Budidaya']);
-    pages.forEach(p => { if (p.category) cats.add(p.category); });
-    cats.forEach(c => { const o = document.createElement('option'); o.value = c; list.appendChild(o); });
+// ── Populate Plant & Subcategory Selects ──
+function populatePlantOptions() {
+    const plantSel  = document.getElementById('edit-plant');
+    const subcatSel = document.getElementById('edit-subcategory');
+    if (!plantSel || !subcatSel) return;
+
+    plantSel.innerHTML = '';
+    PLANT_CATEGORIES.forEach(p => {
+        const o = document.createElement('option');
+        o.value = p; o.textContent = `${getPlantEmoji(p)} ${p}`;
+        plantSel.appendChild(o);
+    });
+
+    subcatSel.innerHTML = '';
+    SUB_CATEGORIES.forEach(s => {
+        const o = document.createElement('option');
+        o.value = s; o.textContent = `${getSubcatEmoji(s)} ${s}`;
+        subcatSel.appendChild(o);
+    });
 }
 
-// ── TOC ──
+// ── ToC ──
 function generateToC(el) {
     const toc = document.getElementById('toc-list-container');
+    if (!toc) return;
     toc.innerHTML = '';
     const headings = el.querySelectorAll('.markdown-body h1, .markdown-body h2, .markdown-body h3');
     if (!headings.length) { toc.innerHTML = '<li class="sidebar-empty">Daftar isi kosong</li>'; return; }
@@ -856,25 +850,35 @@ function generateToC(el) {
 }
 
 // ══════════════════════
-//  MARKDOWN PARSER
+//  Markdown Parser
 // ══════════════════════
 function parseMarkdown(text) {
     if (!text) return '';
     let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
     const codeBlocks = [];
-    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => { codeBlocks.push({ lang, code: code.trim() }); return `\n@@CB${codeBlocks.length - 1}@@\n`; });
+    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+        codeBlocks.push({ lang, code: code.trim() });
+        return `\n@@CB${codeBlocks.length - 1}@@\n`;
+    });
     const inlineCodes = [];
-    html = html.replace(/`([^`\n]+)`/g, (_, code) => { inlineCodes.push(code); return `@@IC${inlineCodes.length - 1}@@`; });
+    html = html.replace(/`([^`\n]+)`/g, (_, code) => {
+        inlineCodes.push(code);
+        return `@@IC${inlineCodes.length - 1}@@`;
+    });
 
     const lines = html.split('\n'), out = [];
     let inList = false, listType = null;
-
     function closeList() { if (inList) { out.push(`</${listType}>`); inList = false; listType = null; } }
 
     for (const line of lines) {
         const t = line.trim();
-        if (/^@@CB\d+@@$/.test(t)) { closeList(); const b = codeBlocks[+t.match(/\d+/)[0]]; out.push(`<pre><code class="language-${b.lang || 'text'}">${b.code}</code></pre>`); continue; }
+        if (/^@@CB\d+@@$/.test(t)) {
+            closeList();
+            const b = codeBlocks[+t.match(/\d+/)[0]];
+            out.push(`<pre><code class="language-${b.lang || 'text'}">${b.code}</code></pre>`);
+            continue;
+        }
         if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(t)) { closeList(); out.push('<hr>'); continue; }
         const hm = line.match(/^(#{1,6})\s+(.*)$/);
         if (hm) { closeList(); const lv = hm[1].length; out.push(`<h${lv} id="${slugify(hm[2])}">${parseInline(hm[2])}</h${lv}>`); continue; }
@@ -909,54 +913,157 @@ function parseInline(t) {
     return t;
 }
 
-// ── UTILITIES ──
+// ── Utilities ──
 function slugify(t) { return t.toString().toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '').replace(/--+/g, '-'); }
 function formatDate(iso) {
     const d = new Date(iso);
-    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-    return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const m = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+    return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}, ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 function capitalize(s) { return s ? s[0].toUpperCase() + s.slice(1) : ''; }
 
+// ════════════════════════════════
+//  Developer Auth System
+// ════════════════════════════════
+function checkDevMode() {
+    isDeveloper = sessionStorage.getItem('agro_dev') === 'true';
+}
+
+function loginDeveloper(password) {
+    if (password === DEV_PASSWORD) {
+        isDeveloper = true;
+        sessionStorage.setItem('agro_dev', 'true');
+        updateDevUI();
+        showToast('Mode Developer aktif! 🔓', 'success');
+        return true;
+    }
+    return false;
+}
+
+function logoutDeveloper() {
+    isDeveloper = false;
+    sessionStorage.removeItem('agro_dev');
+    updateDevUI();
+    showToast('Keluar dari mode Developer 🔒', 'info');
+}
+
+function updateDevUI() {
+    const devLoginBtn      = document.getElementById('dev-login-btn');
+    const headerActionsDiv = document.getElementById('header-actions-dev');
+    const popupEditBtn     = document.getElementById('popup-edit-btn');
+    const popupDeleteBtn   = document.getElementById('popup-delete-btn');
+
+    if (isDeveloper) {
+        if (devLoginBtn)      { devLoginBtn.textContent = '🔒 Keluar Dev Mode'; devLoginBtn.classList.add('btn-dev-active'); }
+        if (headerActionsDiv) headerActionsDiv.style.display = 'flex';
+    } else {
+        if (devLoginBtn)      { devLoginBtn.textContent = '🔐 Developer Login'; devLoginBtn.classList.remove('btn-dev-active'); }
+        if (headerActionsDiv) headerActionsDiv.style.display = 'none';
+    }
+    if (popupEditBtn)   popupEditBtn.style.display   = isDeveloper ? '' : 'none';
+    if (popupDeleteBtn) popupDeleteBtn.style.display = isDeveloper ? '' : 'none';
+
+    renderCardsGrid();
+}
+
+function showDevLoginModal() {
+    const modal = document.getElementById('dev-login-modal');
+    if (!modal) return;
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    setTimeout(() => { const inp = document.getElementById('dev-password-input'); if (inp) inp.focus(); }, 100);
+}
+
+function hideDevLoginModal() {
+    const modal = document.getElementById('dev-login-modal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+    const inp = document.getElementById('dev-password-input');
+    const err = document.getElementById('dev-password-error');
+    if (inp) inp.value = '';
+    if (err) err.textContent = '';
+}
+
 // ══════════════════════
-//  EVENT LISTENERS
+//  Event Listeners
 // ══════════════════════
 function initEventListeners() {
+    // Theme
     document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme);
-    document.getElementById('mobile-sidebar-toggle-btn').addEventListener('click', () => document.getElementById('app-sidebar').classList.toggle('open'));
 
-    const homeLink = document.getElementById('sidebar-home-link');
-    if (homeLink) {
-        homeLink.addEventListener('click', () => {
-            activeTag = null;
-            searchQuery = '';
-            const searchInput = document.getElementById('search-input');
-            if (searchInput) searchInput.value = '';
-            const clearBtn = document.getElementById('clear-search-btn');
-            if (clearBtn) clearBtn.style.display = 'none';
+    // Sidebar toggle (mobile + desktop hamburger)
+    const toggleBtn = document.getElementById('mobile-sidebar-toggle-btn');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            const sidebar   = document.getElementById('app-sidebar');
+            const container = document.querySelector('.app-container');
+            const isCollapsed = container.classList.contains('sidebar-collapsed');
+            if (isCollapsed) {
+                container.classList.remove('sidebar-collapsed');
+                sidebar.classList.add('open');
+            } else {
+                container.classList.add('sidebar-collapsed');
+                sidebar.classList.remove('open');
+            }
         });
     }
 
+    // Sidebar close button (✕ inside sidebar)
+    const closeBtn = document.getElementById('sidebar-close-btn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            document.getElementById('app-sidebar').classList.remove('open');
+            document.querySelector('.app-container').classList.add('sidebar-collapsed');
+        });
+    }
+
+    // Beranda
+    const homeLink = document.getElementById('sidebar-home-link');
+    if (homeLink) {
+        homeLink.addEventListener('click', () => {
+            activePlant = null; activeSubcat = null; activeTag = null; searchQuery = '';
+            const inp = document.getElementById('search-input');
+            const clr = document.getElementById('clear-search-btn');
+            if (inp) inp.value = '';
+            if (clr) clr.style.display = 'none';
+            renderFilterChips();
+        });
+    }
+
+    // Search
     const searchInput = document.getElementById('search-input');
-    const clearBtn = document.getElementById('clear-search-btn');
+    const clearBtn    = document.getElementById('clear-search-btn');
     searchInput.addEventListener('input', e => {
         searchQuery = e.target.value.trim();
         clearBtn.style.display = searchQuery ? 'flex' : 'none';
-        renderSidebar();
+        renderSidebar(); renderFilterChips();
     });
-    clearBtn.addEventListener('click', () => { searchInput.value = ''; searchQuery = ''; clearBtn.style.display = 'none'; searchInput.focus(); renderSidebar(); });
+    clearBtn.addEventListener('click', () => {
+        searchInput.value = ''; searchQuery = ''; clearBtn.style.display = 'none';
+        searchInput.focus(); renderSidebar(); renderFilterChips();
+    });
 
+    // Popup buttons
     document.getElementById('info-popup-close-btn').addEventListener('click', () => closeInfoPopup());
-    document.getElementById('popup-edit-btn').addEventListener('click', () => { if (activePage) window.location.hash = `#/edit/${activePage.slug}`; });
+    document.getElementById('popup-edit-btn').addEventListener('click', () => {
+        if (activePage) window.location.hash = `#/edit/${activePage.slug}`;
+    });
     document.getElementById('popup-delete-btn').addEventListener('click', () => {
         if (!activePage) return;
         if (activePage.slug === 'home') { showToast('Beranda tidak bisa dihapus!', 'error'); return; }
         showModal('Hapus Item?', `Yakin ingin menghapus "${activePage.title}"? Tindakan ini tidak dapat dibatalkan.`, () => {
-            deletePage(activePage.slug);
+            const slug = activePage.slug;
             closeInfoPopup();
+            deletePage(slug);
         });
     });
+    document.getElementById('popup-copy-link-btn').addEventListener('click', () => {
+        if (!activePage) return;
+        copyItemLink(activePage.slug);
+    });
 
+    // Like
     const likeBtn = document.getElementById('popup-like-btn');
     if (likeBtn) {
         likeBtn.addEventListener('click', () => {
@@ -981,73 +1088,49 @@ function initEventListeners() {
         });
     }
 
+    // Popup backdrop
     document.getElementById('info-popup').addEventListener('click', e => {
         if (e.target.id === 'info-popup') closeInfoPopup();
     });
 
+    // Edit form
     document.getElementById('cancel-edit-btn').addEventListener('click', () => {
         window.location.hash = activePage ? `#/page/${activePage.slug}` : '#/page/home';
     });
     document.getElementById('save-page-btn').addEventListener('click', saveActivePage);
 
-    ['edit-description', 'edit-symptoms', 'edit-treatment'].forEach(id => {
+    ['edit-description','edit-symptoms','edit-treatment'].forEach(id => {
         const ta = document.getElementById(id);
         if (ta) ta.addEventListener('focus', () => { lastFocusedTextarea = ta; });
     });
 
-    // ══════════════════════════════════════════
-    //  📷 IMAGE UPLOAD — Cloudinary
-    // ══════════════════════════════════════════
-    document.getElementById('edit-image-file').addEventListener('change', async e => {
+    // ── Image Upload (Cloudinary) ──
+    const imageFileInput = document.getElementById('edit-image-file');
+    imageFileInput.addEventListener('change', async e => {
         const file = e.target.files[0];
         if (!file) return;
+        if (!file.type.startsWith('image/')) { showToast('Hanya file gambar yang diizinkan!', 'error'); return; }
+        if (file.size > 10 * 1024 * 1024) { showToast('Ukuran foto maksimal 10MB!', 'error'); return; }
 
-        // Validasi tipe file
-        if (!file.type.startsWith('image/')) {
-            showToast('Hanya file gambar yang diizinkan!', 'error');
-            return;
-        }
-
-        // Validasi ukuran (maks 10MB)
-        if (file.size > 10 * 1024 * 1024) {
-            showToast('Ukuran foto maksimal 10MB!', 'error');
-            return;
-        }
-
-        // Tampilkan loading state
         const label = document.querySelector('label[for="edit-image-file"]');
-        const originalText = label.innerHTML;
-        label.innerHTML = '⏳ Mengunggah...';
-        label.style.pointerEvents = 'none';
-        label.style.opacity = '0.7';
+        const origText = label ? label.innerHTML : '';
+        if (label) { label.innerHTML = '⏳ Mengunggah...'; label.style.pointerEvents = 'none'; label.style.opacity = '0.7'; }
 
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-            formData.append('folder', 'agrolibrary');
-
-            const res = await fetch(
-                `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-                { method: 'POST', body: formData }
-            );
-
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.error?.message || 'Upload gagal');
-            }
-
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+            fd.append('folder', 'agrolibrary');
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: 'POST', body: fd });
+            if (!res.ok) { const d = await res.json(); throw new Error(d.error?.message || 'Upload gagal'); }
             const data = await res.json();
             setImagePreview(data.secure_url);
             showToast('Foto berhasil diunggah ke cloud! ☁️');
-
         } catch (err) {
             console.error('Upload error:', err);
             showToast('Gagal unggah: ' + err.message, 'error');
         } finally {
-            label.innerHTML = originalText;
-            label.style.pointerEvents = '';
-            label.style.opacity = '';
+            if (label) { label.innerHTML = origText; label.style.pointerEvents = ''; label.style.opacity = ''; }
             e.target.value = '';
         }
     });
@@ -1055,28 +1138,69 @@ function initEventListeners() {
     document.getElementById('edit-image-url').addEventListener('input', e => {
         const url = e.target.value.trim();
         if (url) setImagePreview(url);
-        else if (!document.getElementById('edit-image-file').files.length) clearImagePreview();
+        else if (!imageFileInput.files.length) clearImagePreview();
     });
     document.getElementById('btn-remove-image').addEventListener('click', clearImagePreview);
 
+    // Toolbar
     document.querySelectorAll('.tool-btn').forEach(btn => btn.addEventListener('click', () => handleToolbar(btn.dataset.action)));
 
+    // Export / Import
     document.getElementById('export-btn').addEventListener('click', exportData);
     document.getElementById('import-file').addEventListener('change', importData);
+
+    // Confirm modal cancel
     document.getElementById('modal-cancel-btn').addEventListener('click', hideModal);
+
+    // ── Developer Login ──
+    const devLoginBtn = document.getElementById('dev-login-btn');
+    if (devLoginBtn) {
+        devLoginBtn.addEventListener('click', () => {
+            if (isDeveloper) logoutDeveloper();
+            else showDevLoginModal();
+        });
+    }
+
+    const devLoginCancelBtn  = document.getElementById('dev-login-cancel-btn');
+    const devLoginConfirmBtn = document.getElementById('dev-login-confirm-btn');
+    const devPasswordInput   = document.getElementById('dev-password-input');
+
+    if (devLoginCancelBtn) devLoginCancelBtn.addEventListener('click', hideDevLoginModal);
+    if (devLoginConfirmBtn) {
+        devLoginConfirmBtn.addEventListener('click', () => {
+            const pw = devPasswordInput ? devPasswordInput.value : '';
+            if (loginDeveloper(pw)) {
+                hideDevLoginModal();
+            } else {
+                const err = document.getElementById('dev-password-error');
+                if (err) err.textContent = '❌ Password salah!';
+                if (devPasswordInput) devPasswordInput.value = '';
+            }
+        });
+    }
+    if (devPasswordInput) {
+        devPasswordInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && devLoginConfirmBtn) devLoginConfirmBtn.click();
+        });
+    }
+    const devLoginModal = document.getElementById('dev-login-modal');
+    if (devLoginModal) {
+        devLoginModal.addEventListener('click', e => { if (e.target === devLoginModal) hideDevLoginModal(); });
+    }
 }
 
+// ── Toolbar ──
 function handleToolbar(action) {
-    const ta = lastFocusedTextarea || document.getElementById('edit-description');
-    const s = ta.selectionStart, e = ta.selectionEnd, text = ta.value, sel = text.substring(s, e);
+    const ta  = lastFocusedTextarea || document.getElementById('edit-description');
+    const s   = ta.selectionStart, e = ta.selectionEnd, text = ta.value, sel = text.substring(s, e);
     let pre = '', suf = '', ph = '';
     switch (action) {
-        case 'bold': pre = '**'; suf = '**'; ph = 'tebal'; break;
-        case 'italic': pre = '*'; suf = '*'; ph = 'miring'; break;
-        case 'h2': pre = '## '; ph = 'Heading'; break;
-        case 'h3': pre = '### '; ph = 'Sub-heading'; break;
-        case 'link': pre = '['; suf = '](url)'; ph = 'teks'; break;
-        case 'list-ul': pre = '- '; ph = 'item'; break;
+        case 'bold':    pre = '**'; suf = '**'; ph = 'tebal';      break;
+        case 'italic':  pre = '*';  suf = '*';  ph = 'miring';     break;
+        case 'h2':      pre = '## ';            ph = 'Heading';    break;
+        case 'h3':      pre = '### ';           ph = 'Sub-heading';break;
+        case 'link':    pre = '[';  suf = '](url)'; ph = 'teks';   break;
+        case 'list-ul': pre = '- ';             ph = 'item';       break;
     }
     const ins = sel || ph;
     ta.value = text.substring(0, s) + pre + ins + suf + text.substring(e);
@@ -1084,12 +1208,12 @@ function handleToolbar(action) {
     ta.setSelectionRange(s + pre.length, s + pre.length + ins.length);
 }
 
-// ── MODAL ──
+// ── Modal ──
 function showModal(title, body, onConfirm) {
     const m = document.getElementById('confirm-modal');
     document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-body').textContent = body;
-    const btn = document.getElementById('modal-confirm-btn');
+    document.getElementById('modal-body').textContent  = body;
+    const btn   = document.getElementById('modal-confirm-btn');
     const clone = btn.cloneNode(true);
     btn.parentNode.replaceChild(clone, btn);
     clone.addEventListener('click', () => { onConfirm(); hideModal(); });
@@ -1102,7 +1226,37 @@ function hideModal() {
     m.setAttribute('aria-hidden', 'true');
 }
 
-// ── TOAST ──
+// ── Copy Item Link ──
+function copyItemLink(slug) {
+    const url = `${window.location.origin}${window.location.pathname}#/page/${slug}`;
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(url)
+            .then(() => showToast('Link disalin! Siap dibuat QR Code 📋'))
+            .catch(() => fallbackCopyLink(url));
+    } else {
+        fallbackCopyLink(url);
+    }
+}
+
+function fallbackCopyLink(url) {
+    const tempInput = document.createElement('textarea');
+    tempInput.value = url;
+    tempInput.style.position = 'fixed';
+    tempInput.style.opacity = '0';
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    tempInput.setSelectionRange(0, 99999);
+    try {
+        document.execCommand('copy');
+        showToast('Link disalin! Siap dibuat QR Code 📋');
+    } catch {
+        showToast('Gagal menyalin otomatis. Link: ' + url, 'error');
+    }
+    document.body.removeChild(tempInput);
+}
+
+// ── Toast ──
 function showToast(msg, type = 'success') {
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -1110,7 +1264,7 @@ function showToast(msg, type = 'success') {
     setTimeout(() => t.classList.remove('show'), 3000);
 }
 
-// ── EXPORT / IMPORT ──
+// ── Export / Import ──
 function exportData() {
     const a = document.createElement('a');
     a.href = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(pages, null, 2));
@@ -1137,10 +1291,8 @@ async function importData(ev) {
 }
 
 function getLikedSlugs() {
-    try {
-        const raw = localStorage.getItem('agro_liked_slugs');
-        return raw ? JSON.parse(raw) : [];
-    } catch { return []; }
+    try { const raw = localStorage.getItem('agro_liked_slugs'); return raw ? JSON.parse(raw) : []; }
+    catch { return []; }
 }
 function saveLikedSlugs(slugs) {
     localStorage.setItem('agro_liked_slugs', JSON.stringify(slugs));

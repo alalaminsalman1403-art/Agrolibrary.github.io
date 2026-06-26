@@ -26,10 +26,13 @@
                     <img src="logo.jpg" alt="Logo AgroLibrary" class="brand-logo">
                     <h1>AgroLibrary</h1>
                 </div>
-                <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle Theme">
-                    <span class="theme-icon-light">☀️</span>
-                    <span class="theme-icon-dark">🌙</span>
-                </button>
+                <div class="sidebar-header-actions">
+                    <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle Theme">
+                        <span class="theme-icon-light">☀️</span>
+                        <span class="theme-icon-dark">🌙</span>
+                    </button>
+                    <button class="sidebar-close-btn" id="sidebar-close-btn" aria-label="Tutup Sidebar" title="Tutup Sidebar">✕</button>
+                </div>
             </div>
 
             <!-- Beranda Nav -->
@@ -41,7 +44,7 @@
             <!-- Search -->
             <div class="search-box">
                 <span class="search-icon">🔍</span>
-                <input type="text" id="search-input" placeholder="Cari penyakit, hama, tanaman..."
+                <input type="text" id="search-input" placeholder="Cari nama, gejala, penyebab..."
                     aria-label="Cari Item">
                 <button class="clear-search" id="clear-search-btn" style="display: none;"
                     aria-label="Clear Search">&times;</button>
@@ -49,10 +52,18 @@
 
             <!-- Scrollable Nav -->
             <div class="sidebar-scrollable">
-                <!-- Category Filter -->
+                <!-- Plant Filter (Level 1) -->
                 <div class="sidebar-section">
-                    <h3 class="section-title">Filter Kategori</h3>
-                    <div class="tags-container" id="sidebar-tags">
+                    <h3 class="section-title">🌿 Tanaman</h3>
+                    <div class="tags-container" id="sidebar-plant-tags">
+                        <!-- Rendered via JS -->
+                    </div>
+                </div>
+
+                <!-- Sub-Category Filter (Level 2 — shown when plant is selected) -->
+                <div class="sidebar-section" id="sidebar-subcat-section" style="display:none;">
+                    <h3 class="section-title">📂 Sub-Kategori</h3>
+                    <div class="tags-container" id="sidebar-subcat-tags">
                         <!-- Rendered via JS -->
                     </div>
                 </div>
@@ -68,11 +79,12 @@
 
             <!-- Sidebar Footer -->
             <div class="sidebar-footer">
-                <button class="btn btn-outline btn-xs" id="export-btn" title="Ekspor data sebagai JSON">📥
-                    Ekspor</button>
-                <label for="import-file" class="btn btn-outline btn-xs btn-label" title="Impor data dari JSON">📤
-                    Impor</label>
-                <input type="file" id="import-file" accept=".json" style="display: none;">
+                <div class="sidebar-footer-top">
+                    <button class="btn btn-outline btn-xs" id="export-btn" title="Ekspor data sebagai JSON">📥 Ekspor</button>
+                    <label for="import-file" class="btn btn-outline btn-xs btn-label" title="Impor data dari JSON">📤 Impor</label>
+                    <input type="file" id="import-file" accept=".json" style="display: none;">
+                </div>
+                <button class="btn-dev" id="dev-login-btn">🔐 Developer Login</button>
             </div>
         </aside>
 
@@ -92,10 +104,11 @@
                         <h2 class="page-title" id="view-page-title">Pustaka Agro</h2>
                         <div class="page-meta">
                             <span id="view-page-stats">Menampilkan semua item</span>
-                            <div class="page-tags-list" id="view-page-tags" style="display: none;"></div>
                         </div>
+                        <!-- Active Filter Chips -->
+                        <div class="filter-chips-bar" id="filter-chips-bar" style="display:none;"></div>
                     </div>
-                    <div class="header-actions">
+                    <div class="header-actions" id="header-actions-dev" style="display:none;">
                         <a href="#/new" class="btn btn-primary" id="header-new-btn">➕ Tambah Item</a>
                     </div>
                 </header>
@@ -123,20 +136,26 @@
                 <div class="editor-scroll-wrapper">
                     <div class="editor-form-container">
 
-                        <!-- Row: Title + Category -->
+                        <!-- Row: Title + Plant + Subcategory -->
                         <div class="form-row">
                             <div class="form-group form-grow">
                                 <label for="edit-title">Nama / Judul Item <span class="required-star">*</span></label>
                                 <input type="text" id="edit-title"
-                                    placeholder="Contoh: Layu Bakteri, Wereng Coklat, Padi..." required
+                                    placeholder="Contoh: Layu Bakteri, Kumbang Tanduk, Pemangkasan..." required
                                     autocomplete="off">
                                 <span class="error-msg" id="title-error"></span>
                             </div>
-                            <div class="form-group" style="min-width:220px;">
-                                <label for="edit-category">Kategori <span class="required-star">*</span></label>
-                                <input type="text" id="edit-category" placeholder="Penyakit, Hama, Tanaman..."
-                                    list="category-suggestions" autocomplete="off" required>
-                                <datalist id="category-suggestions"></datalist>
+                            <div class="form-group" style="min-width:175px;">
+                                <label for="edit-plant">🌿 Tanaman <span class="required-star">*</span></label>
+                                <select id="edit-plant" class="form-select">
+                                    <!-- Populated via JS -->
+                                </select>
+                            </div>
+                            <div class="form-group" style="min-width:175px;">
+                                <label for="edit-subcategory">📂 Sub-Kategori</label>
+                                <select id="edit-subcategory" class="form-select">
+                                    <!-- Populated via JS -->
+                                </select>
                             </div>
                         </div>
 
@@ -221,8 +240,9 @@
                 <div class="info-popup-actions">
                     <button class="btn btn-outline" id="popup-like-btn" style="margin-right: auto;">👍 Sering Terdampak
                         (<span id="popup-like-count">0</span>)</button>
-                    <button class="btn btn-outline" id="popup-edit-btn">✏️ Sunting Data</button>
-                    <button class="btn btn-danger" id="popup-delete-btn">🗑️ Hapus</button>
+                    <button class="btn btn-outline" id="popup-copy-link-btn">📋 Copy Link</button>
+                    <button class="btn btn-outline" id="popup-edit-btn" style="display:none;">✏️ Sunting Data</button>
+                    <button class="btn btn-danger" id="popup-delete-btn" style="display:none;">🗑️ Hapus</button>
                 </div>
             </div>
         </div>
@@ -236,6 +256,23 @@
             <div class="modal-actions">
                 <button class="btn btn-outline" id="modal-cancel-btn">Batal</button>
                 <button class="btn btn-danger" id="modal-confirm-btn">Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Developer Login Modal -->
+    <div class="modal-overlay" id="dev-login-modal" aria-hidden="true" role="dialog">
+        <div class="modal">
+            <h3 class="modal-title">🔐 Developer Login</h3>
+            <p class="modal-body">Masukkan password developer untuk mengaktifkan mode edit & kelola data.</p>
+            <div style="margin-bottom:16px;">
+                <input type="password" id="dev-password-input" placeholder="Masukkan password..."
+                    class="form-select" style="width:100%;margin-bottom:6px;">
+                <span class="error-msg" id="dev-password-error"></span>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline" id="dev-login-cancel-btn">Batal</button>
+                <button class="btn btn-primary" id="dev-login-confirm-btn">🔓 Masuk</button>
             </div>
         </div>
     </div>
