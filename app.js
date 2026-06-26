@@ -5,7 +5,7 @@
 
 //  Firebase Config
 // Ambil dari: Firebase Console → Project Settings → Your Apps → SDK setup
-const firebaseConfig = {
+const FIREBASECONFIG = {
   apiKey: "AIzaSyDiNaDyY6ekYp97g_pGlnwdmPLXQHRfe0k",
   authDomain: "agrolibrary-d35e6.firebaseapp.com",
   projectId: "agrolibrary-d35e6",
