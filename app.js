@@ -3,25 +3,22 @@
 //  Versi: Firebase Firestore + Cloudinary
 // ═══════════════════════════════════════════
 
-// ╔══════════════════════════════════════════════╗
-// ║  ⚙️  KONFIGURASI — ISI BAGIAN INI DULU       ║
-// ╚══════════════════════════════════════════════╝
-
-// 🔥 Firebase Config
+//  Firebase Config
 // Ambil dari: Firebase Console → Project Settings → Your Apps → SDK setup
-const FIREBASE_CONFIG = {
-    apiKey:            "ISI_API_KEY_KAMU",
-    authDomain:        "ISI_PROJECT_ID.firebaseapp.com",
-    projectId:         "ISI_PROJECT_ID",
-    storageBucket:     "ISI_PROJECT_ID.appspot.com",
-    messagingSenderId: "ISI_SENDER_ID",
-    appId:             "ISI_APP_ID"
+const firebaseConfig = {
+  apiKey: "AIzaSyDiNaDyY6ekYp97g_pGlnwdmPLXQHRfe0k",
+  authDomain: "agrolibrary-d35e6.firebaseapp.com",
+  projectId: "agrolibrary-d35e6",
+  storageBucket: "agrolibrary-d35e6.firebasestorage.app",
+  messagingSenderId: "329766319260",
+  appId: "1:329766319260:web:5e8005b1db4ba981562959",
+  measurementId: "G-9F129CE5MR"
 };
 
-// ☁️ Cloudinary Config
+//  Cloudinary Config
 // Cloud Name sudah diketahui dari screenshot kamu
 const CLOUDINARY_CLOUD_NAME    = 'dbirucziq';
-const CLOUDINARY_UPLOAD_PRESET = 'ISI_NAMA_PRESET_KAMU'; // dari Settings → Upload → Upload Presets
+const CLOUDINARY_UPLOAD_PRESET = 'AgroLibrary'; // dari Settings → Upload → Upload Presets
 
 // ╔══════════════════════════════════════════════╗
 // ║  Selesai — tidak perlu ubah di bawah ini     ║
