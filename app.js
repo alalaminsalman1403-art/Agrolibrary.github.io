@@ -925,8 +925,8 @@ document.getElementById('edit-image-file').addEventListener('change', async e =>
     if (!file) return;
 
     // Konfigurasi Cloudinary kamu
-    const CLOUD_NAME = 'isi_cloud_name_kamu';     // ← ganti ini
-    const UPLOAD_PRESET = 'isi_preset_name_kamu'; // ← ganti ini
+    const CLOUD_NAME = 'dbirucziq';
+    const UPLOAD_PRESET = 'AgroLibrary';
 
     // Tampilkan loading
     const label = document.querySelector('label[for="edit-image-file"]');
