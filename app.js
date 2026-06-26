@@ -1,20 +1,38 @@
-const FIREBASE_CONFIG = {
-    apiKey:            "AIzaSyDiNaDyY6ekYp97g_pGlnwdmPLXQHRfe0k",
-    authDomain:        "agrolibrary-d35e6.firebaseapp.com",
-    projectId:         "agrolibrary-d35e6",
-    storageBucket:     "agrolibrary-d35e6.firebasestorage.app",
-    messagingSenderId: "329766319260",
-    appId:             "1:329766319260:web:5e8005b1db4ba981562959"
-};
-
-const CLOUDINARY_UPLOAD_PRESET = 'AgroLibrary';
-
 // ═══════════════════════════════════════════
 //  AgroLibrary — Main Application Logic
+//  Versi: Firebase Firestore + Cloudinary
 // ═══════════════════════════════════════════
 
+// ╔══════════════════════════════════════════════╗
+// ║  ⚙️  KONFIGURASI — ISI BAGIAN INI DULU       ║
+// ╚══════════════════════════════════════════════╝
+
+// 🔥 Firebase Config
+// Ambil dari: Firebase Console → Project Settings → Your Apps → SDK setup
+const FIREBASE_CONFIG = {
+    apiKey:            "ISI_API_KEY_KAMU",
+    authDomain:        "ISI_PROJECT_ID.firebaseapp.com",
+    projectId:         "ISI_PROJECT_ID",
+    storageBucket:     "ISI_PROJECT_ID.appspot.com",
+    messagingSenderId: "ISI_SENDER_ID",
+    appId:             "ISI_APP_ID"
+};
+
+// ☁️ Cloudinary Config
+// Cloud Name sudah diketahui dari screenshot kamu
+const CLOUDINARY_CLOUD_NAME    = 'dbirucziq';
+const CLOUDINARY_UPLOAD_PRESET = 'ISI_NAMA_PRESET_KAMU'; // dari Settings → Upload → Upload Presets
+
+// ╔══════════════════════════════════════════════╗
+// ║  Selesai — tidak perlu ubah di bawah ini     ║
+// ╚══════════════════════════════════════════════╝
+
+// ── FIREBASE INIT ──
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.firestore();
+const PAGES_DOC = db.collection('agrolibrary').doc('pages');
+
 const STORAGE_KEYS = {
-    PAGES: 'AGROLIBRARY_PAGES',
     THEME: 'AGROLIBRARY_THEME'
 };
 
@@ -33,15 +51,16 @@ const DEFAULT_PAGES = [
 2. **Pencarian Instan** — Ketik nama penyakit, gejala, atau penyebab di kotak pencarian
 3. **Tambah Data Baru** — Klik tombol **"Tambah Item Baru"**, isi form terstruktur, lalu simpan
 4. **Unggah Foto** — Setiap item mendukung unggah foto dari perangkat atau URL gambar
-5. **Cadangkan Data** — Gunakan tombol Ekspor/Impor di bagian bawah sidebar
+5. **Sinkron Otomatis** — Data tersimpan di cloud, bisa diakses dari perangkat mana saja!
 
-> Semua data tersimpan di browser Anda (offline-first). Anda bisa menggunakan aplikasi ini tanpa internet!
+> Data tersimpan di Firebase Cloud — tersinkron otomatis di semua perangkat secara real-time!
 
 *Mulailah dengan menjelajahi contoh data di sidebar kiri.*`,
         symptoms: '',
         treatment: '',
         updatedAt: new Date().toISOString(),
-        viewCount: 0
+        viewCount: 0,
+        likesCount: 0
     },
     {
         slug: 'layu-bakteri',
@@ -63,7 +82,8 @@ Penyebarannya sangat cepat melalui air irigasi, alat pertanian, atau tanah yang 
 4. **Rotasi tanaman** — ganti dengan tanaman non-inang selama 2-3 tahun
 5. **Solarisasi tanah** — tutup bedengan dengan mulsa plastik sebelum tanam`,
         updatedAt: new Date().toISOString(),
-        viewCount: 0
+        viewCount: 0,
+        likesCount: 0
     },
     {
         slug: 'wereng-coklat',
@@ -82,7 +102,8 @@ Serangga kecil penghisap cairan ini menyerang secara koloni dalam jumlah ribuan.
 4. **Pengairan berselang** — keringkan lahan berkala, hindari genangan terus-menerus
 5. **Insektisida selektif** jika populasi > 15 ekor/rumpun (gunakan *pymetrozine* atau *imidacloprid*)`,
         updatedAt: new Date().toISOString(),
-        viewCount: 0
+        viewCount: 0,
+        likesCount: 0
     },
     {
         slug: 'tanaman-padi',
@@ -103,7 +124,8 @@ Termasuk tanaman monokotil dari keluarga *Poaceae*. Memerlukan air melimpah (pad
 4. **Manajemen air** — irigasi berselang, genangi 3-5 cm awal tanam, keringkan lahan 10 hari sebelum panen
 5. **Penyiangan** — manual/gosrok pada 20 HST dan 40 HST`,
         updatedAt: new Date().toISOString(),
-        viewCount: 0
+        viewCount: 0,
+        likesCount: 0
     }
 ];
 
@@ -114,15 +136,48 @@ let activeTag = null;
 let searchQuery = '';
 let currentImageData = '';
 let lastFocusedTextarea = null;
+let unsubscribeListener = null;
 
 // ── INIT ──
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
-    loadPages();
+    showAppLoading(true);
+    await loadPages();
+    setupRealtimeSync();
     initEventListeners();
     window.addEventListener('hashchange', handleRoute);
     handleRoute();
+    showAppLoading(false);
 });
+
+// ── LOADING STATE ──
+function showAppLoading(show) {
+    let overlay = document.getElementById('app-loading-overlay');
+    if (show) {
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'app-loading-overlay';
+            overlay.style.cssText = `
+                position:fixed;top:0;left:0;width:100%;height:100%;
+                background:var(--bg-primary,#111);
+                display:flex;flex-direction:column;align-items:center;
+                justify-content:center;z-index:9999;gap:16px;
+            `;
+            overlay.innerHTML = `
+                <div style="font-size:2.5rem">🌾</div>
+                <div style="color:var(--text-primary,#fff);font-size:1rem;font-family:sans-serif">
+                    Memuat AgroLibrary...
+                </div>
+                <div style="width:40px;height:40px;border:3px solid rgba(255,255,255,.2);
+                    border-top-color:#4ade80;border-radius:50%;animation:spin .8s linear infinite"></div>
+                <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+            `;
+            document.body.appendChild(overlay);
+        }
+    } else {
+        if (overlay) overlay.remove();
+    }
+}
 
 // ── THEME ──
 function initTheme() {
@@ -136,21 +191,79 @@ function toggleTheme() {
     showToast(isLight ? 'Mode Gelap 🌙' : 'Mode Terang ☀️');
 }
 
-// ── DATA ──
-function loadPages() {
-    const raw = localStorage.getItem(STORAGE_KEYS.PAGES);
-    if (raw) {
-        try { pages = JSON.parse(raw); migratePages(); } catch { pages = [...DEFAULT_PAGES]; }
-    } else {
-        const old = localStorage.getItem('WIKIMAJOR_PAGES');
-        if (old) {
-            try { pages = JSON.parse(old); migratePages(); savePages(); } catch { pages = [...DEFAULT_PAGES]; savePages(); }
+// ══════════════════════════════════════════════
+//  DATA — Firebase Firestore
+// ══════════════════════════════════════════════
+
+async function loadPages() {
+    try {
+        const doc = await PAGES_DOC.get();
+        if (doc.exists && doc.data().data) {
+            pages = doc.data().data;
+            migratePages();
+        } else {
+            // Cek apakah ada data lama di localStorage untuk migrasi
+            const raw = localStorage.getItem('AGROLIBRARY_PAGES') || localStorage.getItem('WIKIMAJOR_PAGES');
+            if (raw) {
+                try {
+                    pages = JSON.parse(raw);
+                    migratePages();
+                    await savePages(); // Upload data lama ke Firestore
+                    showToast('Data lama berhasil dipindahkan ke cloud! ☁️');
+                } catch {
+                    pages = [...DEFAULT_PAGES];
+                    await savePages();
+                }
+            } else {
+                pages = [...DEFAULT_PAGES];
+                await savePages();
+            }
+        }
+    } catch (err) {
+        console.error('Gagal memuat dari Firebase:', err);
+        // Fallback ke localStorage jika Firebase gagal
+        const raw = localStorage.getItem('AGROLIBRARY_PAGES');
+        if (raw) {
+            try { pages = JSON.parse(raw); migratePages(); } catch { pages = [...DEFAULT_PAGES]; }
         } else {
             pages = [...DEFAULT_PAGES];
-            savePages();
         }
+        showToast('⚠️ Gagal terhubung ke cloud, mode offline aktif', 'error');
     }
 }
+
+async function savePages() {
+    try {
+        await PAGES_DOC.set({ data: pages, updatedAt: new Date().toISOString() });
+    } catch (err) {
+        console.error('Gagal menyimpan ke Firebase:', err);
+        // Fallback ke localStorage
+        localStorage.setItem('AGROLIBRARY_PAGES', JSON.stringify(pages));
+        showToast('⚠️ Tersimpan offline saja (cek koneksi)', 'error');
+    }
+}
+
+// ── REAL-TIME SYNC ──
+// Mendengarkan perubahan dari device lain secara otomatis
+function setupRealtimeSync() {
+    if (unsubscribeListener) unsubscribeListener(); // Hapus listener lama
+
+    unsubscribeListener = PAGES_DOC.onSnapshot(snapshot => {
+        if (snapshot.exists && snapshot.data().data) {
+            const newPages = snapshot.data().data;
+            // Hanya update jika data benar-benar berbeda
+            if (JSON.stringify(newPages) !== JSON.stringify(pages)) {
+                pages = newPages;
+                migratePages();
+                renderSidebar();
+                showToast('🔄 Data diperbarui dari perangkat lain', 'info');
+            }
+        }
+    }, err => {
+        console.error('Listener error:', err);
+    });
+}
+
 function migratePages() {
     pages.forEach(p => {
         if (!p.description) p.description = p.content || '';
@@ -162,7 +275,6 @@ function migratePages() {
         if (typeof p.likesCount !== 'number') p.likesCount = 0;
     });
 }
-function savePages() { localStorage.setItem(STORAGE_KEYS.PAGES, JSON.stringify(pages)); }
 
 // ── ROUTER ──
 function handleRoute() {
@@ -191,10 +303,8 @@ function showViewMode(slug) {
         return;
     }
 
-    // Render sidebar which also triggers renderCardsGrid
     renderSidebar();
 
-    // Update header breadcrumbs and titles
     const titleEl = document.getElementById('view-page-title');
     const statsEl = document.getElementById('view-page-stats');
     const breadcrumbsEl = document.getElementById('page-breadcrumbs');
@@ -210,11 +320,9 @@ function showViewMode(slug) {
         breadcrumbsEl.innerHTML = `AgroLibrary &gt; <span>Semua</span>`;
     }
 
-    // Update statistics display
     const visibleCount = document.querySelectorAll('.info-card').length;
     statsEl.textContent = `Menampilkan ${visibleCount} item`;
 
-    // Handle popup showing
     if (page && slug !== 'home') {
         activePage = page;
         showInfoPopup(page);
@@ -228,10 +336,8 @@ function renderCardsGrid() {
     if (!grid) return;
     grid.innerHTML = '';
 
-    // Filter pages (hide 'home' from cards list)
     const filtered = pages.filter(p => {
         if (p.slug === 'home') return false;
-
         const q = searchQuery.toLowerCase();
         const match = !q || p.title.toLowerCase().includes(q)
             || (p.description || '').toLowerCase().includes(q)
@@ -240,7 +346,6 @@ function renderCardsGrid() {
         return match && (!activeTag || p.category === activeTag);
     });
 
-    // Handle home hero rendering
     const container = document.querySelector('.cards-grid-container');
     const oldBanner = container.querySelector('.home-hero-section');
     if (oldBanner) oldBanner.remove();
@@ -251,7 +356,6 @@ function renderCardsGrid() {
         const categories = [...new Set(allItems.map(p => p.category))];
         const itemsWithPhoto = allItems.filter(p => p.image).length;
 
-        // Sort helpers
         const byDate = [...allItems].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
         const byViews = [...allItems].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
         const diseaseItems = [...allItems]
@@ -265,7 +369,6 @@ function renderCardsGrid() {
         const banner = document.createElement('div');
         banner.className = 'home-hero-section';
         banner.innerHTML = `
-            <!-- ═══ HERO TOP ═══ -->
             <div class="home-hero-top">
                 <div class="home-hero-badge">🌾 AgroLibrary</div>
                 <h2 class="home-hero-headline">Ensiklopedia Pertanian<br><span class="home-hero-accent">Cerdas &amp; Lengkap</span></h2>
@@ -288,7 +391,6 @@ function renderCardsGrid() {
                 </div>
             </div>
 
-            <!-- ═══ FITUR UNGGULAN (Deskriptif) ═══ -->
             <div class="home-section-header">
                 <div class="home-section-title-wrap">
                     <span class="home-section-icon">⚡</span>
@@ -300,26 +402,25 @@ function renderCardsGrid() {
                 <div class="feat-desc-item">
                     <div class="feat-desc-icon feat-desc-amber">🗂️</div>
                     <h4 class="feat-desc-title">Sistem Kategorisasi</h4>
-                    <p class="feat-desc-body">Seluruh data diorganisir secara sistematis dalam kategori <strong>Penyakit, Hama, Tanaman,</strong> dan kategori lainnya. Memudahkan navigasi tanpa perlu mengetahui nama spesifik terlebih dahulu.</p>
+                    <p class="feat-desc-body">Seluruh data diorganisir secara sistematis dalam kategori <strong>Penyakit, Hama, Tanaman,</strong> dan kategori lainnya.</p>
                 </div>
                 <div class="feat-desc-item">
                     <div class="feat-desc-icon feat-desc-teal">🔍</div>
                     <h4 class="feat-desc-title">Pencarian Real-Time</h4>
-                    <p class="feat-desc-body">Mesin pencari internal menelusuri <strong>judul, penyebab, gejala, dan cara penanganan</strong> secara bersamaan. Hasil muncul instan saat Anda mengetik — tanpa reload halaman.</p>
+                    <p class="feat-desc-body">Mesin pencari internal menelusuri <strong>judul, penyebab, gejala, dan cara penanganan</strong> secara bersamaan.</p>
                 </div>
                 <div class="feat-desc-item">
                     <div class="feat-desc-icon feat-desc-green">📸</div>
-                    <h4 class="feat-desc-title">Foto Referensi Visual</h4>
-                    <p class="feat-desc-body">Setiap item dapat disertai <strong>foto penyakit atau hama</strong> dari kamera perangkat maupun URL gambar. Identifikasi lebih mudah dengan referensi visual yang jelas dan akurat.</p>
+                    <h4 class="feat-desc-title">Foto di Cloud</h4>
+                    <p class="feat-desc-body">Foto disimpan di <strong>Cloudinary</strong> — tersedia di semua perangkat tanpa batas ukuran storage browser.</p>
                 </div>
                 <div class="feat-desc-item">
-                    <div class="feat-desc-icon feat-desc-blue">💾</div>
-                    <h4 class="feat-desc-title">Offline & Ekspor Data</h4>
-                    <p class="feat-desc-body">Semua data tersimpan langsung di perangkat Anda (<strong>offline-first</strong>). Dukung cadangan melalui fitur Ekspor/Impor JSON — aman dari kehilangan data kapan saja.</p>
+                    <div class="feat-desc-icon feat-desc-blue">🔄</div>
+                    <h4 class="feat-desc-title">Sinkron Otomatis</h4>
+                    <p class="feat-desc-body">Data tersimpan di <strong>Firebase Cloud</strong> dan tersinkron otomatis di semua perangkat secara real-time.</p>
                 </div>
             </div>
 
-            <!-- ═══ KONTEN TERBARU ═══ -->
             ${byDate.length > 0 ? `
             <div class="home-section-header">
                 <div class="home-section-title-wrap">
@@ -332,7 +433,6 @@ function renderCardsGrid() {
                 ${byDate.slice(0, 8).map(p => buildRowCard(p)).join('')}
             </div>` : ''}
 
-            <!-- ═══ PALING BANYAK DICARI ═══ -->
             ${byViews.filter(p => (p.viewCount || 0) > 0).length > 0 ? `
             <div class="home-section-header">
                 <div class="home-section-title-wrap">
@@ -345,7 +445,6 @@ function renderCardsGrid() {
                 ${byViews.slice(0, 8).map(p => buildRowCard(p, 'views')).join('')}
             </div>` : ''}
 
-            <!-- ═══ PALING SERING TERDAMPAK ═══ -->
             ${diseaseItems.length > 0 ? `
             <div class="home-section-header">
                 <div class="home-section-title-wrap">
@@ -358,7 +457,6 @@ function renderCardsGrid() {
                 ${diseaseItems.slice(0, 8).map(p => buildRowCard(p, 'disease')).join('')}
             </div>` : ''}
 
-            <!-- ═══ DIVIDER ke SEMUA ITEM ═══ -->
             <div class="home-all-items-header">
                 <div class="home-section-title-wrap">
                     <span class="home-section-icon">📚</span>
@@ -368,7 +466,6 @@ function renderCardsGrid() {
             </div>
         `;
 
-        // Bind row card click events
         banner.querySelectorAll('.home-row-card').forEach(card => {
             card.addEventListener('click', () => {
                 const slug = card.dataset.slug;
@@ -409,18 +506,15 @@ function renderCardsGrid() {
             </div>
             <div class="info-card-body" onclick="window.location.hash = '#/page/${p.slug}'">
                 <h3 class="info-card-title">${p.title}</h3>
-                
                 <div class="card-info-section card-info-desc">
                     <span class="card-info-section-title">📝 Penyebab</span>
                     <div class="card-info-section-body">${descSnippet}</div>
                 </div>
-                
                 ${p.symptoms && p.symptoms.trim() ? `
                 <div class="card-info-section card-info-symptoms">
                     <span class="card-info-section-title">⚠️ Ciri / Gejala</span>
                     <div class="card-info-section-body">${symptomsSnippet}</div>
                 </div>` : ''}
-                
                 ${p.treatment && p.treatment.trim() ? `
                 <div class="card-info-section card-info-treatment">
                     <span class="card-info-section-title">✅ Penanggulangan</span>
@@ -447,7 +541,7 @@ function renderCardsGrid() {
     });
 }
 
-// ── BUILD ROW CARD HTML (used in home rows) ──
+// ── BUILD ROW CARD ──
 function buildRowCard(p, variant = '') {
     const catClass = `category-${slugify(p.category || 'umum')}`;
     const imgHtml = p.image
@@ -491,10 +585,8 @@ function showInfoPopup(page) {
 
     catEl.textContent = page.category || 'Umum';
     catEl.className = `info-popup-category category-${slugify(page.category || 'umum')}`;
-
     dateEl.textContent = `Diperbarui: ${formatDate(page.updatedAt)}`;
     titleEl.textContent = page.title;
-
     bodyEl.innerHTML = '';
 
     if (page.image) {
@@ -532,26 +624,19 @@ function showInfoPopup(page) {
         bodyEl.appendChild(treatmentSection);
     }
 
-    // Increment view count
     if (page.slug !== 'home') {
         page.viewCount = (page.viewCount || 0) + 1;
         savePages();
     }
 
-    // Update like button status
     const likeBtn = document.getElementById('popup-like-btn');
     if (likeBtn) {
         const likedSlugs = getLikedSlugs();
         const hasLiked = likedSlugs.includes(page.slug);
-        if (hasLiked) {
-            likeBtn.classList.add('btn-liked');
-        } else {
-            likeBtn.classList.remove('btn-liked');
-        }
+        if (hasLiked) likeBtn.classList.add('btn-liked');
+        else likeBtn.classList.remove('btn-liked');
         const likeCountEl = document.getElementById('popup-like-count');
-        if (likeCountEl) {
-            likeCountEl.textContent = page.likesCount || 0;
-        }
+        if (likeCountEl) likeCountEl.textContent = page.likesCount || 0;
     }
 
     popup.classList.add('show');
@@ -562,16 +647,11 @@ function showInfoPopup(page) {
 function closeInfoPopup(updateHash = true) {
     const popup = document.getElementById('info-popup');
     if (!popup) return;
-
     popup.classList.remove('show');
     popup.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
-
     activePage = null;
-
-    if (updateHash) {
-        window.location.hash = '#/page/home';
-    }
+    if (updateHash) window.location.hash = '#/page/home';
 }
 
 // ══════════════════════
@@ -612,7 +692,7 @@ function showEditMode(slug = null, prefill = '') {
     lastFocusedTextarea = el('edit-description');
 }
 
-function saveActivePage() {
+async function saveActivePage() {
     const el = id => document.getElementById(id);
     const title = el('edit-title').value.trim();
     let category = el('edit-category').value.trim();
@@ -649,32 +729,32 @@ function saveActivePage() {
         });
         showToast('Item baru berhasil dibuat! 🎉');
     }
-    savePages();
+    await savePages();
     window.location.hash = `#/page/${newSlug}`;
 }
 
-function deletePage(slug) {
+async function deletePage(slug) {
     if (slug === 'home') { showToast('Beranda tidak bisa dihapus!', 'error'); return; }
     const i = pages.findIndex(p => p.slug === slug);
-    if (i !== -1) { pages.splice(i, 1); savePages(); showToast('Item dihapus.'); window.location.hash = '#/page/home'; }
+    if (i !== -1) {
+        pages.splice(i, 1);
+        await savePages();
+        showToast('Item dihapus.');
+        window.location.hash = '#/page/home';
+    }
 }
 
 // ══════════════════════
 //  SIDEBAR
 // ══════════════════════
 function renderSidebar() {
-    // Set active state on the Home link in sidebar
     const homeLink = document.getElementById('sidebar-home-link');
     if (homeLink) {
         const hash = window.location.hash || '#/page/home';
-        if (hash === '#/page/home') {
-            homeLink.classList.add('active');
-        } else {
-            homeLink.classList.remove('active');
-        }
+        if (hash === '#/page/home') homeLink.classList.add('active');
+        else homeLink.classList.remove('active');
     }
 
-    // Categories (excluding 'home' page)
     const cats = {};
     pages.filter(p => p.slug !== 'home').forEach(p => { const c = p.category || 'Umum'; cats[c] = (cats[c] || 0) + 1; });
 
@@ -695,7 +775,6 @@ function renderSidebar() {
         tagsDiv.appendChild(b);
     });
 
-    // Page list (excluding 'home' page)
     const list = document.getElementById('sidebar-page-list');
     list.innerHTML = '';
 
@@ -709,7 +788,6 @@ function renderSidebar() {
 
     if (!filtered.length) { list.innerHTML = `<li class="sidebar-empty">Tidak ada item ditemukan</li>`; renderCardsGrid(); return; }
 
-    // Group by category
     const groups = {};
     filtered.forEach(p => { const c = p.category || 'Umum'; (groups[c] = groups[c] || []).push(p); });
 
@@ -850,24 +928,18 @@ function initEventListeners() {
     document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme);
     document.getElementById('mobile-sidebar-toggle-btn').addEventListener('click', () => document.getElementById('app-sidebar').classList.toggle('open'));
 
-    // Sidebar home navigation reset
     const homeLink = document.getElementById('sidebar-home-link');
     if (homeLink) {
         homeLink.addEventListener('click', () => {
             activeTag = null;
             searchQuery = '';
             const searchInput = document.getElementById('search-input');
-            if (searchInput) {
-                searchInput.value = '';
-            }
+            if (searchInput) searchInput.value = '';
             const clearBtn = document.getElementById('clear-search-btn');
-            if (clearBtn) {
-                clearBtn.style.display = 'none';
-            }
+            if (clearBtn) clearBtn.style.display = 'none';
         });
     }
 
-    // Search
     const searchInput = document.getElementById('search-input');
     const clearBtn = document.getElementById('clear-search-btn');
     searchInput.addEventListener('input', e => {
@@ -877,7 +949,6 @@ function initEventListeners() {
     });
     clearBtn.addEventListener('click', () => { searchInput.value = ''; searchQuery = ''; clearBtn.style.display = 'none'; searchInput.focus(); renderSidebar(); });
 
-    // Popup actions
     document.getElementById('info-popup-close-btn').addEventListener('click', () => closeInfoPopup());
     document.getElementById('popup-edit-btn').addEventListener('click', () => { if (activePage) window.location.hash = `#/edit/${activePage.slug}`; });
     document.getElementById('popup-delete-btn').addEventListener('click', () => {
@@ -913,63 +984,77 @@ function initEventListeners() {
         });
     }
 
-    // Close popup on clicking overlay background
     document.getElementById('info-popup').addEventListener('click', e => {
         if (e.target.id === 'info-popup') closeInfoPopup();
     });
 
-    // Edit actions
     document.getElementById('cancel-edit-btn').addEventListener('click', () => {
         window.location.hash = activePage ? `#/page/${activePage.slug}` : '#/page/home';
     });
     document.getElementById('save-page-btn').addEventListener('click', saveActivePage);
 
-    // Textarea focus tracking
     ['edit-description', 'edit-symptoms', 'edit-treatment'].forEach(id => {
         const ta = document.getElementById(id);
         if (ta) ta.addEventListener('focus', () => { lastFocusedTextarea = ta; });
     });
 
-   // Image upload — Cloudinary Unsigned Upload
-document.getElementById('edit-image-file').addEventListener('change', async e => {
-    const file = e.target.files[0];
-    if (!file) return;
+    // ══════════════════════════════════════════
+    //  📷 IMAGE UPLOAD — Cloudinary
+    // ══════════════════════════════════════════
+    document.getElementById('edit-image-file').addEventListener('change', async e => {
+        const file = e.target.files[0];
+        if (!file) return;
 
-    // Konfigurasi Cloudinary kamu
-    const CLOUD_NAME = 'dbirucziq';
-    const UPLOAD_PRESET = 'AgroLibrary';
+        // Validasi tipe file
+        if (!file.type.startsWith('image/')) {
+            showToast('Hanya file gambar yang diizinkan!', 'error');
+            return;
+        }
 
-    // Tampilkan loading
-    const label = document.querySelector('label[for="edit-image-file"]');
-    const originalText = label.innerHTML;
-    label.innerHTML = '⏳ Mengunggah...';
-    label.style.pointerEvents = 'none';
+        // Validasi ukuran (maks 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            showToast('Ukuran foto maksimal 10MB!', 'error');
+            return;
+        }
 
-    try {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', UPLOAD_PRESET);
-        formData.append('folder', 'agrolibrary'); // folder di Cloudinary
+        // Tampilkan loading state
+        const label = document.querySelector('label[for="edit-image-file"]');
+        const originalText = label.innerHTML;
+        label.innerHTML = '⏳ Mengunggah...';
+        label.style.pointerEvents = 'none';
+        label.style.opacity = '0.7';
 
-        const res = await fetch(
-            `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-            { method: 'POST', body: formData }
-        );
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+            formData.append('folder', 'agrolibrary');
 
-        if (!res.ok) throw new Error('Upload gagal');
+            const res = await fetch(
+                `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+                { method: 'POST', body: formData }
+            );
 
-        const data = await res.json();
-        setImagePreview(data.secure_url); // URL permanen dari Cloudinary
-        showToast('Foto berhasil diunggah! ☁️');
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error?.message || 'Upload gagal');
+            }
 
-    } catch (err) {
-        showToast('Gagal unggah foto: ' + err.message, 'error');
-    } finally {
-        label.innerHTML = originalText;
-        label.style.pointerEvents = '';
-        e.target.value = ''; // reset input
-    }
-});
+            const data = await res.json();
+            setImagePreview(data.secure_url);
+            showToast('Foto berhasil diunggah ke cloud! ☁️');
+
+        } catch (err) {
+            console.error('Upload error:', err);
+            showToast('Gagal unggah: ' + err.message, 'error');
+        } finally {
+            label.innerHTML = originalText;
+            label.style.pointerEvents = '';
+            label.style.opacity = '';
+            e.target.value = '';
+        }
+    });
+
     document.getElementById('edit-image-url').addEventListener('input', e => {
         const url = e.target.value.trim();
         if (url) setImagePreview(url);
@@ -977,14 +1062,10 @@ document.getElementById('edit-image-file').addEventListener('change', async e =>
     });
     document.getElementById('btn-remove-image').addEventListener('click', clearImagePreview);
 
-    // Toolbar
     document.querySelectorAll('.tool-btn').forEach(btn => btn.addEventListener('click', () => handleToolbar(btn.dataset.action)));
 
-    // Backup
     document.getElementById('export-btn').addEventListener('click', exportData);
     document.getElementById('import-file').addEventListener('change', importData);
-
-    // Modal
     document.getElementById('modal-cancel-btn').addEventListener('click', hideModal);
 }
 
@@ -1040,14 +1121,15 @@ function exportData() {
     a.click();
     showToast('Data diekspor! 📥');
 }
-function importData(ev) {
+async function importData(ev) {
     const f = ev.target.files[0]; if (!f) return;
     const r = new FileReader();
-    r.onload = e => {
+    r.onload = async e => {
         try {
             const d = JSON.parse(e.target.result);
             if (Array.isArray(d) && d.length && d[0].slug) {
-                pages = d; migratePages(); savePages();
+                pages = d; migratePages();
+                await savePages();
                 showToast('Data diimpor! 🔄');
                 handleRoute();
             } else showToast('File JSON tidak valid.', 'error');
@@ -1061,11 +1143,8 @@ function getLikedSlugs() {
     try {
         const raw = localStorage.getItem('agro_liked_slugs');
         return raw ? JSON.parse(raw) : [];
-    } catch {
-        return [];
-    }
+    } catch { return []; }
 }
-
 function saveLikedSlugs(slugs) {
     localStorage.setItem('agro_liked_slugs', JSON.stringify(slugs));
 }

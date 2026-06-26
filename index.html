@@ -216,7 +216,7 @@
                     <h2 class="info-popup-title" id="popup-title">Judul Item</h2>
                 </div>
                 <div class="info-popup-body" id="popup-body">
-                    <!-- Dynamically populated details (image, description, symptoms, treatment) -->
+                    <!-- Dynamically populated details -->
                 </div>
                 <div class="info-popup-actions">
                     <button class="btn btn-outline" id="popup-like-btn" style="margin-right: auto;">👍 Sering Terdampak
@@ -240,6 +240,13 @@
         </div>
     </div>
 
+    <!-- ═══════════════════════════════════════════════
+         🔥 Firebase SDK — WAJIB ada sebelum app.js
+         ═══════════════════════════════════════════════ -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <!-- App Script -->
     <script src="app.js"></script>
 </body>
 
