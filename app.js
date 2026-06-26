@@ -1,3 +1,14 @@
+const FIREBASE_CONFIG = {
+    apiKey:            "AIzaSyDiNaDyY6ekYp97g_pGlnwdmPLXQHRfe0k",
+    authDomain:        "agrolibrary-d35e6.firebaseapp.com",
+    projectId:         "agrolibrary-d35e6",
+    storageBucket:     "agrolibrary-d35e6.firebasestorage.app",
+    messagingSenderId: "329766319260",
+    appId:             "1:329766319260:web:5e8005b1db4ba981562959"
+};
+
+const CLOUDINARY_UPLOAD_PRESET = 'AgroLibrary';
+
 // ═══════════════════════════════════════════
 //  AgroLibrary — Main Application Logic
 // ═══════════════════════════════════════════
