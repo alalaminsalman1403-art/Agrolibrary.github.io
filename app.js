@@ -5,7 +5,7 @@
 
 //  Firebase Config
 // Ambil dari: Firebase Console → Project Settings → Your Apps → SDK setup
-const FIREBASECONFIG = {
+const FirebaseConfig = {
   apiKey: "AIzaSyDiNaDyY6ekYp97g_pGlnwdmPLXQHRfe0k",
   authDomain: "agrolibrary-d35e6.firebaseapp.com",
   projectId: "agrolibrary-d35e6",
@@ -25,7 +25,7 @@ const CLOUDINARY_UPLOAD_PRESET = 'AgroLibrary'; // dari Settings → Upload → 
 // ╚══════════════════════════════════════════════╝
 
 // ── FIREBASE INIT ──
-firebase.initializeApp(FIREBASE_CONFIG);
+firebase.initializeApp(FirebaseConfig);
 const db = firebase.firestore();
 const PAGES_DOC = db.collection('agrolibrary').doc('pages');
 
